@@ -1,0 +1,19 @@
+{
+  "name": "go_client_test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "npx ts-node driver.ts",
+    "tsc": "tsc"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.4.2",
+    "@types/ws": "^8.5.5"
+  },
+  "dependencies": {
+    "ws": "^8.13.0"
+  }
+}
