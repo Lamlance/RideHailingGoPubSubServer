@@ -1,7 +1,7 @@
 package main
 
 import (
-	"goserver/libs"
+	"goserver/routes/loc"
 	"goserver/routes/ws"
 	"goserver/routes/xhr"
 	"log"
@@ -25,7 +25,10 @@ func main() {
 	app.Get("xhr/driver/",
 		xhr.DriverWaitRequest)
 
-	go libs.KafkaConsumer()
+	app.Post("loc/driver/:driver_id",loc.DriverLocationPost)
+	app.Get("loc/driver/:driver_id",loc.DriverLocationGet)
+
+	//go libs.KafkaConsumer()
 
 	log.Fatal(app.Listen(":3080"))
 }

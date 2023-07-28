@@ -81,7 +81,7 @@ func KafkaConsumer() {
 	})
 
 	if err != nil {
-		log.Fatalln(err)
+		log.Println("Kafka connect err: ",err)
 		return
 	}
 
