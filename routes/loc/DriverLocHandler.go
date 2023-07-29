@@ -3,6 +3,7 @@ package loc
 import (
 	"goserver/routes"
 	"log"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
@@ -33,14 +34,21 @@ func DriverLocationPost(c *fiber.Ctx) error {
 		log.Println("Driver location body: ", body)
 	}
 
-	_,err := routes.GlobalRedisClient.GeoAdd(routes.RedisContext, body.G, &redis.GeoLocation{
+	if len(body.G) < 4{
+		c.SendStatus(400)
+		return c.SendString("Invalid geo hash")
+	}
+
+	geo_key := body.G[0:3]
+
+	_, err := routes.GlobalRedisClient.GeoAdd(routes.RedisContext, geo_key , &redis.GeoLocation{
 		Longitude: body.Lon,
 		Latitude:  body.Lat,
 		Name:      driver_id,
 	}).Result()
 
-	if err != nil{
-		log.Println("Geo add error: ",err)
+	if err != nil {
+		log.Println("Geo add error: ", err)
 		return c.SendStatus(500)
 	}
 
@@ -50,19 +58,59 @@ func DriverLocationPost(c *fiber.Ctx) error {
 func DriverLocationGet(c *fiber.Ctx) error {
 	driver_id := c.Params("driver_id")
 	geo_hash := c.Query("geo_hash")
-	if driver_id == "" || geo_hash == ""{
+	if driver_id == "" || len(geo_hash) < 4 {
+		return c.SendStatus(404)
+	}
+	
+	geo_key := geo_hash[0:3]
+
+	res, err := routes.GlobalRedisClient.GeoSearchLocation(routes.RedisContext,geo_key,
+		&redis.GeoSearchLocationQuery{
+			GeoSearchQuery: redis.GeoSearchQuery{
+				Count: 1,
+				Member: driver_id,
+			},
+			WithCoord: true,
+		}).Result()
+
+	if err != nil {
+		log.Println("Get geo error: ", err)
+		return c.SendStatus(500)
+	}
+
+	if len(res) <= 0{
+		c.SendStatus(404)
+		return c.SendString("Driver not found")
+	}
+
+	resJson := struct {
+		Lon float64 `json:"Lon"`
+		Lat float64 `json:"Lat"`
+	}{
+		Lon: res[0].Longitude,
+		Lat: res[0].Latitude,
+	}
+
+	c.SendStatus(200)
+	return c.JSON(resJson)
+}
+
+func DriverLocationDelete(c *fiber.Ctx) error {
+	driver_id := c.Params("driver_id")
+	geo_hash := c.Query("geo_hash")
+	if driver_id == "" || len(geo_hash) < 4 {
 		return c.SendStatus(404)
 	}
 
-	res,err := routes.GlobalRedisClient.GeoPos(routes.RedisContext,geo_hash,driver_id).Result()
+	geo_key := geo_hash[0:3]
+
+	res,err := routes.GlobalRedisClient.ZRem(routes.RedisContext, geo_key, driver_id).Result()
+
 	if err != nil{
-		log.Println("Get geo area: ",err)
-		return c.SendStatus(500)
-	}
-	
-	for _,pos := range res{
-		log.Println("Location: ",pos.Longitude,pos.Latitude)
+		c.SendStatus(500)
+		return c.SendString(err.Error())
 	}
 
-	return c.SendStatus(200)
+	c.SendStatus(200)
+	return c.SendString(strconv.FormatInt(res,10))
 }

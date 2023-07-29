@@ -3,27 +3,40 @@ package ws
 import "sync"
 
 type CommunicationMsg struct {
-	client_msg []string
-	driver_msg []string
-
+	data []string
 	lock *sync.Mutex
 }
 
+type CommunicationRoom struct {
+	client_msg *CommunicationMsg
+	driver_msg *CommunicationMsg
+
+	lock               *sync.Mutex 
+	Break_ride_request chan bool
+}
+
 type GlobalCommunicationMsg struct {
-	Data map[string]*CommunicationMsg
+	Data map[string]*CommunicationRoom
 	Lock *sync.Mutex
 }
 
-var GlobalMsg = GlobalCommunicationMsg{
+var GlobalRoomMap = GlobalCommunicationMsg{
 	Lock: new(sync.Mutex),
-	Data: make(map[string]*CommunicationMsg),
+	Data: make(map[string]*CommunicationRoom),
 }
 
-func MakeEmptyCommunicationMsg() *CommunicationMsg {
-	comMsg := CommunicationMsg{
-		driver_msg: make([]string, 0),
-		client_msg: make([]string, 0),
-		lock:       new(sync.Mutex),
+func MakeEmptyCommunicationRoom() *CommunicationRoom {
+	comMsg := CommunicationRoom{
+		driver_msg: &CommunicationMsg{
+			data: make([]string, 0),
+			lock: new(sync.Mutex),
+		},
+		client_msg: &CommunicationMsg{
+			data: make([]string, 0),
+			lock: new(sync.Mutex),
+		},
+		Break_ride_request: make(chan bool,0),
+		lock: new(sync.Mutex),
 	}
 	return &comMsg
 }
