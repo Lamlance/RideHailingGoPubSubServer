@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"goserver/libs"
 	"goserver/routes/ws"
+
 	"log"
 	"time"
 
@@ -21,7 +21,9 @@ func publish_ride_request_loop(geo_key string, user_id string, stop_req *chan bo
 				break
 			default:
 				log.Println("Send ride request for driver")
-				libs.Publish(geo_key, "Ride request from "+user_id+" to "+pos.Name)
+				
+				GlobalRedisClient.Publish(RedisContext,geo_key,"Msg for dirver id: " + pos.Name)
+
 				time.Sleep(2 * time.Second)
 			}
 		}
@@ -55,7 +57,7 @@ func ClientRideRequest(c *fiber.Ctx) error {
 		return c.SendStatus(500)
 	}
 
-	geo_key := geo_hash[0:3]
+	geo_key := geo_hash[0:4]
 
 	res, err := GlobalRedisClient.GeoRadius(RedisContext, geo_key, lon, lat, &redis.GeoRadiusQuery{
 		Radius: 1,
@@ -68,8 +70,10 @@ func ClientRideRequest(c *fiber.Ctx) error {
 		log.Println("Ride request error: ", err)
 		return c.SendStatus(500)
 	}
-
+	if len(res) <= 0{
+		c.SendString("Server can't find any driver")
+		return c.SendStatus(500)
+	}
 	go publish_ride_request_loop(geo_key, user_id, &room.Break_ride_request, res)
-
 	return c.Next()
 }

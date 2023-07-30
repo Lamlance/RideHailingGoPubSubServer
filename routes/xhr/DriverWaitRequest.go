@@ -2,7 +2,6 @@ package xhr
 
 import (
 	"goserver/libs"
-	"goserver/routes"
 	"log"
 	"time"
 
@@ -10,7 +9,21 @@ import (
 )
 
 func DriverWaitRequest(c *fiber.Ctx) error {
-	ch, close := libs.Subscribe(routes.PubSub, "Driver")
+	geo_hash := c.Params("geo_hash")
+	if len(geo_hash) < 4 {
+		return c.SendStatus(404)
+	}
+
+
+
+	geo_key := geo_hash[0:4]
+
+	ch, close,ok := libs.Subscribe(geo_key)
+
+	if !ok {
+		return c.SendStatus(500)
+	}
+
 	defer close()
 
 	time.AfterFunc(10*time.Minute, func() {
@@ -22,6 +35,7 @@ func DriverWaitRequest(c *fiber.Ctx) error {
 	msg, ok := <-ch
 	
 	if(ok){
+		c.SendStatus(200)
 		return c.SendString(msg)
 	}
 

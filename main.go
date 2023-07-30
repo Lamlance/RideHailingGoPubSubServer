@@ -24,7 +24,7 @@ func main() {
 		ws.DriverHandlerMiddleware,
 		websocket.New(ws.DriverListenThread))
 
-	app.Get("xhr/driver/",
+	app.Get("xhr/driver/:geo_hash",
 		xhr.DriverWaitRequest)
 
 	app.Post("loc/driver/:driver_id", loc.DriverLocationPost)
@@ -32,6 +32,6 @@ func main() {
 	app.Delete("loc/driver/:driver_id", loc.DriverLocationDelete)
 
 	//go libs.KafkaConsumer()
-
+	go routes.RedisSubscribe()
 	log.Fatal(app.Listen(":3080"))
 }

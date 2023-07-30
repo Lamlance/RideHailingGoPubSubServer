@@ -39,7 +39,7 @@ func DriverLocationPost(c *fiber.Ctx) error {
 		return c.SendString("Invalid geo hash")
 	}
 
-	geo_key := body.G[0:3]
+	geo_key := body.G[0:4]
 
 	_, err := routes.GlobalRedisClient.GeoAdd(routes.RedisContext, geo_key , &redis.GeoLocation{
 		Longitude: body.Lon,
@@ -62,7 +62,7 @@ func DriverLocationGet(c *fiber.Ctx) error {
 		return c.SendStatus(404)
 	}
 	
-	geo_key := geo_hash[0:3]
+	geo_key := geo_hash[0:4]
 
 	res, err := routes.GlobalRedisClient.GeoSearchLocation(routes.RedisContext,geo_key,
 		&redis.GeoSearchLocationQuery{
@@ -102,7 +102,7 @@ func DriverLocationDelete(c *fiber.Ctx) error {
 		return c.SendStatus(404)
 	}
 
-	geo_key := geo_hash[0:3]
+	geo_key := geo_hash[0:4]
 
 	res,err := routes.GlobalRedisClient.ZRem(routes.RedisContext, geo_key, driver_id).Result()
 
