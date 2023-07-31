@@ -6,24 +6,7 @@ import (
 	"time"
 
 	"github.com/gofiber/contrib/websocket"
-	"github.com/gofiber/fiber/v2"
 )
-
-func ClientCheckMiddleware(c *fiber.Ctx) error {
-	random_string := "Secrete_trip_id" //uuid.New().String()
-
-	GlobalRoomMap.Lock.Lock()
-
-	room := MakeEmptyCommunicationRoom()
-	GlobalRoomMap.Data[random_string] = room
-
-	c.Locals("trip_id", random_string)
-	c.Locals("room", room)
-
-	GlobalRoomMap.Lock.Unlock()
-
-	return c.Next()
-}
 
 func ClientListenThread(c *websocket.Conn) {
 	defer c.Close()

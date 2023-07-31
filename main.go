@@ -16,13 +16,15 @@ func main() {
 	app := fiber.New()
 
 	app.Get("/ws/client/:geo_hash",
-		ws.ClientCheckMiddleware,
+		routes.ClientCheckMiddleware,
 		routes.ClientRideRequest,
 		websocket.New(ws.ClientListenThread))
 
 	app.Get("/ws/driver/:trip_id",
 		ws.DriverHandlerMiddleware,
 		websocket.New(ws.DriverListenThread))
+
+	
 
 	app.Get("xhr/driver/:geo_hash",
 		xhr.DriverWaitRequest)
