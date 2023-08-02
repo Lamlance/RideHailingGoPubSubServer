@@ -20,30 +20,50 @@ func publish_ride_request_loop(geo_key string, user_id string, stop_req *chan bo
 	stop_loop := make(chan bool, 0)
 	timeout_chan := make(chan bool, 0)
 
+	var timer *time.Timer
+
 	timeout_routine := func() {
-		timeout_chan <- false
+		//timeout_chan <- false
 		log.Println("Start timeout routine")
-		<-time.After(10 * time.Second)
-		timeout_chan <- true
+		if timer == nil {
+			timer = time.NewTimer(20 * time.Second)
+		} else {
+			timer.Reset(20 * time.Second)
+		}
+		_, ok := <-timer.C
+		log.Println("End timeout routine")
+		if ok {
+			timeout_chan <- true
+		}
 	}
 
 	go func() {
+		driver_ok := false
 		for _, pos := range res {
+			if driver_ok {
+				break
+			}
 			select {
 			case <-(stop_loop):
 				log.Println("A driver has stop req loop")
+				driver_ok = true
+				if !timer.Stop(){
+					<- timer.C
+				}
 				break
 			case <-(timeout_chan):
 				log.Println("Msg for dirver id: " + pos.Name)
 				go timeout_routine()
-				//GlobalRedisClient.Publish(RedisContext,geo_key,"Msg for dirver id: " + pos.Name)
+				GlobalRedisClient.Publish(RedisContext, geo_key, "Msg for dirver id: "+pos.Name)
 			default:
 				log.Println("Nothing happend")
 				time.Sleep(5 * time.Second)
 			}
 		}
-		*stop_req <- true
-		<-stop_loop
+		if !driver_ok {
+			*stop_req <- true
+			<-stop_loop
+		}
 		log.Println("Request loop stopped #2")
 	}()
 
