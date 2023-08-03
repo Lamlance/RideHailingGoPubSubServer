@@ -33,6 +33,8 @@ func NewPubSub(topic string) *PubSub {
 	GlobalPubSubDict.pubsubs[topic] = &ps
 	GlobalPubSubDict.lock.Unlock()
 
+	log.Println("Create topic: ",topic)
+
 	return &ps
 }
 
@@ -42,12 +44,21 @@ var GlobalPubSubDict = CreatedPubSubDict{
 	lock: new(sync.Mutex),
 }
 
-func Subscribe(p *PubSub, topic string) (<-chan string, func()) {
+func Subscribe(topic string) (<-chan string, func(),bool) {
+	GlobalPubSubDict.lock.Lock()
+	p,ok := GlobalPubSubDict.pubsubs[topic]
+	if !ok{
+		log.Println("Cant find topic ",topic, " in pubsub dict")
+		return nil,nil, false
+	}
+	GlobalPubSubDict.lock.Unlock()
+	
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
 	c := make(chan string, 1)
 	p.channels = append(p.channels, c)
+	log.Println("Channel length: ",len(p.channels))
 
 	return c, func() {
 		p.lock.Lock()
@@ -59,7 +70,7 @@ func Subscribe(p *PubSub, topic string) (<-chan string, func()) {
 				return
 			}
 		}
-	}
+	},true
 }
 
 func Publish(topic string, message string) {
@@ -81,7 +92,7 @@ func KafkaConsumer() {
 	})
 
 	if err != nil {
-		log.Fatalln(err)
+		log.Println("Kafka connect err: ",err)
 		return
 	}
 

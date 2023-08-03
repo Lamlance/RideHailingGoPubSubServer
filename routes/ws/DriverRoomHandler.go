@@ -12,19 +12,22 @@ import (
 func DriverHandlerMiddleware(c *fiber.Ctx) error {
 	trip_id := c.Params("trip_id")
 	if trip_id == "" {
-		c.SendStatus(400)
+		return c.SendStatus(400)
 	}
 
-	GlobalMsg.Lock.Lock()
-	comMsg, ok := GlobalMsg.Data[trip_id]
-	GlobalMsg.Lock.Unlock()
-
+	GlobalRoomMap.Lock.Lock()
+	room, ok := GlobalRoomMap.Data[trip_id]
 	if !ok {
 		log.Println("Driver can't find trip Id in com channels")
+		GlobalRoomMap.Lock.Unlock()
 		return c.SendStatus(404)
 	}
+	log.Printf("Driver is stopping ride req loop")
+	room.Break_ride_request <- true
+	log.Printf("Driver has stopping ride req loop")
+	c.Locals("room", room)
 
-	c.Locals("ComChannel",comMsg)
+	GlobalRoomMap.Lock.Unlock()
 
 	return c.Next()
 }
@@ -32,14 +35,17 @@ func DriverHandlerMiddleware(c *fiber.Ctx) error {
 func DriverListenThread(c *websocket.Conn) {
 	defer c.Close()
 
-	comMsg,ok := c.Locals("ComChannel").(*CommunicationMsg)
-	if !ok{
+	room, ok_room := c.Locals("room").(*CommunicationRoom)
+
+	if !ok_room {
 		log.Println("Driver cant find com channel")
 		return
 	}
 
+	client_msg := room.client_msg
+	driver_msg := room.driver_msg
 
-	go DriverHandleClientMsgThread(c, comMsg)
+	go DriverHandleClientMsgThread(c, client_msg)
 
 	for {
 		_, msg, err := c.ReadMessage()
@@ -51,32 +57,30 @@ func DriverListenThread(c *websocket.Conn) {
 			log.Println("Get driver msg: " + string(msg))
 		}
 
-		comMsg.lock.Lock()
-		comMsg.driver_msg = libs.Enque(comMsg.driver_msg, string(msg))
-		comMsg.lock.Unlock()
+		driver_msg.lock.Lock()
+		driver_msg.data = libs.Enque(driver_msg.data, string(msg))
+		driver_msg.lock.Unlock()
 	}
 
-	c.Close()
 }
 
-func DriverHandleClientMsgThread(c *websocket.Conn, comMsg *CommunicationMsg) {
+func DriverHandleClientMsgThread(c *websocket.Conn, client_msg *CommunicationMsg) {
 	for {
-		comMsg.lock.Lock()
+		client_msg.lock.Lock()
 
-		if len(comMsg.client_msg) != 0 {
+		if len(client_msg.data) != 0 {
 			msg := ""
-			msg, comMsg.client_msg = libs.Dequeue(comMsg.client_msg)
+			msg, client_msg.data = libs.Dequeue(client_msg.data)
 			log.Println("Driver get client msg: ", msg)
 
 			err := c.WriteMessage(websocket.TextMessage, []byte(msg))
 			if err != nil {
-				comMsg.lock.Unlock()
+				client_msg.lock.Unlock()
 				log.Println("Driver write error: " + err.Error())
 				break
 			}
 		}
-		comMsg.lock.Unlock()
+		client_msg.lock.Unlock()
 		time.Sleep(2 * time.Second)
-
 	}
 }
