@@ -35,6 +35,7 @@ func DriverWaitRequest(c *fiber.Ctx) error {
 	msg, ok := <-ch	
 
 	if(ok){
+		
 		c.SendStatus(200)
 		return c.SendString(msg)
 	}

@@ -8,7 +8,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var PubSub = libs.NewPubSub("w3gv")
 var GlobalRedisClient = redis.NewClient(&redis.Options{
 	Addr:     "localhost:6785",
 	Password: "", // no password set
