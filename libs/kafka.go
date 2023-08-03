@@ -58,6 +58,7 @@ func Subscribe(topic string) (<-chan string, func(),bool) {
 
 	c := make(chan string, 1)
 	p.channels = append(p.channels, c)
+	log.Println("Channel length: ",len(p.channels))
 
 	return c, func() {
 		p.lock.Lock()
