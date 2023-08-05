@@ -11,63 +11,93 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func publish_ride_request_loop(geo_key string, user_id string, stop_req *chan bool, res []redis.GeoLocation) {
-	for i := 0; i < 10; i++ {
+func publish_ride_request_loop(geo_key string, user_id string, req_chan *chan int, res []redis.GeoLocation) {
+	for i := 0; i < 3; i++ {
 		res = append(res, redis.GeoLocation{
 			Name: "Driver #" + strconv.Itoa(i),
 		})
 	}
-	stop_loop := make(chan bool, 0)
+
+	req_code := make(chan int, 0)
 	timeout_chan := make(chan bool, 0)
+	skip_timeout_chan := make(chan bool, 0)
 
 	var timer *time.Timer
-
 	timeout_routine := func() {
-		//timeout_chan <- false
 		log.Println("Start timeout routine")
 		if timer == nil {
 			timer = time.NewTimer(20 * time.Second)
 		} else {
 			timer.Reset(20 * time.Second)
 		}
-		<-timer.C
-		log.Println("End timeout routine")
-		timeout_chan <- true
+		select {
+		case <-skip_timeout_chan:
+			log.Println("Time out has been skipped")
+
+			timeout_chan <- true
+		case <-timer.C:
+			log.Println("End timeout routine")
+			timeout_chan <- true
+		}
 
 	}
 
 	go func() {
 		driver_ok := false
-		for _, pos := range res {
-			if driver_ok {
+
+		for i := 0; i < len(res)+1; i++ {
+			if driver_ok || i >= len(res) {
 				break
 			}
+
+			pos := res[i]
 			select {
-			case <-(stop_loop):
-				log.Println("A driver has stop req loop")
-				driver_ok = true
+			case res := <-(req_code):
 				if !timer.Stop() {
+					log.Println("Stop timeout false")
 					<-timer.C
+				} else {
+					log.Println("Stop timeout true")
 				}
+
+				if res == 0 {
+					log.Println("A driver has stop req loop")
+					driver_ok = true
+				} else {
+					skip_timeout_chan <- true
+					log.Println("A Driver has skipped request")
+				}
+
 			case <-(timeout_chan):
 				log.Println("Msg for dirver id: " + pos.Name)
-				go timeout_routine()
+				if i < len(res) -1 {
+					go timeout_routine()
+				}
 				GlobalRedisClient.Publish(RedisContext, geo_key, "Msg for dirver id: "+pos.Name)
 			}
 		}
+		log.Println("Request loop stopping #2")
+
 		if !driver_ok {
-			*stop_req <- true
-			<-stop_loop
+			log.Println("No driver accept request")
+			*req_chan <- 3
+			<-req_code
 		}
+
 		log.Println("Request loop stopped #2")
 	}()
 
 	timeout_chan <- true
-
-	_, ok := <-*stop_req
-	stop_loop <- true
-	if !ok {
-		log.Println("Req loop timed out")
+	for {
+		code, ok := <-*req_chan
+		if !ok {
+			log.Println("Req loop timed out")
+			break
+		}
+		req_code <- code
+		if code == 0 || code == 3 {
+			break
+		}
 	}
 	log.Println("Request loop stopped #1")
 }
@@ -122,6 +152,6 @@ func ClientRideRequest(c *fiber.Ctx) error {
 		c.SendString("Server can't find any driver")
 		return c.SendStatus(500)
 	}
-	go publish_ride_request_loop(geo_key, user_id, &room.Break_ride_request, res)
+	go publish_ride_request_loop(geo_key, user_id, &room.Ride_requst_channel, res)
 	return c.Next()
 }

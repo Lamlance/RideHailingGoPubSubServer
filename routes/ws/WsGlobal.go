@@ -12,7 +12,7 @@ type CommunicationRoom struct {
 	driver_msg *CommunicationMsg
 
 	lock               *sync.Mutex 
-	Break_ride_request chan bool
+	Ride_requst_channel chan int
 }
 
 type GlobalCommunicationMsg struct {
@@ -35,7 +35,7 @@ func MakeEmptyCommunicationRoom() *CommunicationRoom {
 			data: make([]string, 0),
 			lock: new(sync.Mutex),
 		},
-		Break_ride_request: make(chan bool,0),
+		Ride_requst_channel: make(chan int,0),
 		lock: new(sync.Mutex),
 	}
 	return &comMsg

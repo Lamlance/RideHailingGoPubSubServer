@@ -33,6 +33,22 @@ func main() {
 		ws.DriverHandlerMiddleware,
 		websocket.New(ws.DriverListenThread))
 
+	app.Delete("/ws/driver/:trip_id",
+		ws.DriverHandlerMiddleware,
+		func(c *fiber.Ctx) error {
+			room, ok_room := c.Locals("room").(*ws.CommunicationRoom)
+
+			if !ok_room {
+				log.Println("Driver cant find com channel")
+				return c.SendStatus(500)
+			}
+
+			log.Printf("Driver is skipping ride req loop")
+			room.Ride_requst_channel <- 1
+			log.Printf("Driver has skipping ride req loop")
+			return c.SendStatus(200)
+		})
+
 	app.Get("xhr/driver/:geo_hash",
 		xhr.DriverWaitRequest)
 
@@ -43,7 +59,8 @@ func main() {
 	libs.NewPubSub("w3gv")
 
 	//go libs.KafkaConsumer()
-	go routes.RedisSubscribe()
+	topics := []string{"w3gv"}
+	go routes.RedisSubscribe(topics)
 
 	log.Fatal(app.Listen(":3080"))
 }

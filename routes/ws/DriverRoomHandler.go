@@ -22,9 +22,6 @@ func DriverHandlerMiddleware(c *fiber.Ctx) error {
 		GlobalRoomMap.Lock.Unlock()
 		return c.SendStatus(404)
 	}
-	log.Printf("Driver is stopping ride req loop")
-	room.Break_ride_request <- true
-	log.Printf("Driver has stopping ride req loop")
 	c.Locals("room", room)
 
 	GlobalRoomMap.Lock.Unlock()
@@ -41,6 +38,10 @@ func DriverListenThread(c *websocket.Conn) {
 		log.Println("Driver cant find com channel")
 		return
 	}
+
+	log.Printf("Driver is stopping ride req loop")
+	room.Ride_requst_channel <- 0
+	log.Printf("Driver has stopping ride req loop")
 
 	client_msg := room.client_msg
 	driver_msg := room.driver_msg
