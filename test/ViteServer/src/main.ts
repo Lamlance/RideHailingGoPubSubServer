@@ -47,10 +47,10 @@ function StartReqLoop(){
 
 function Client_Connect() {
   client_socket = new WebSocket(client_link_input.value);
-  client_socket.onclose = function () {
+  client_socket.onclose = function (e) {
     client_button.onclick = Client_Connect;
     client_button.innerHTML = "Connect"
-    log_textarea.value += `Client socket closed \n`;
+    log_textarea.value += `Client socket closed ${e.reason} ${e.code} \n`;
   }
 
   client_socket.onopen = function () {
@@ -75,10 +75,10 @@ function Client_Connect() {
 
 function DriverConnect() {
   driver_socket = new WebSocket(driver_link_input.value);
-  driver_socket.onclose = function () {
+  driver_socket.onclose = function (e) {
     driver_button.onclick = DriverConnect;
     driver_button.innerHTML = "Connect";
-    log_textarea.value += "Driver socket closed \n";
+    log_textarea.value += `Driver socket closed ${e.reason} - ${e.code} \n`;
   }
 
   driver_socket.onopen = function () {
@@ -96,7 +96,7 @@ function DriverConnect() {
   }
 
   driver_socket.onerror = function (e) {
-    log_textarea.value += `Driver socket error: ${e}`
+    log_textarea.value += `Driver socket error: ${e} \n`
   }
 }
 

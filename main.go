@@ -24,11 +24,15 @@ func main() {
 		AllowMethods:     "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
 	}))
 
+	app.Get("/",func(c *fiber.Ctx) error {return c.SendString("Hello")})
+
 	app.Get("/ws/client/:geo_hash",
 		routes.ClientCheckMiddleware,
 		routes.ClientRideRequest,
 		websocket.New(ws.ClientListenThread))
 
+	
+	
 	app.Get("/ws/driver/:trip_id",
 		ws.DriverHandlerMiddleware,
 		websocket.New(ws.DriverListenThread))

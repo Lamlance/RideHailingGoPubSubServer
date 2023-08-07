@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"encoding/json"
 	"goserver/routes/ws"
 	"strconv"
 
@@ -11,7 +12,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func publish_ride_request_loop(geo_key string, user_id string, req_chan *chan int, res []redis.GeoLocation) {
+
+
+func publish_ride_request_loop(geo_key string, rideInfo *ws.RideReqInfo, req_chan *chan int, res []redis.GeoLocation) {
 	for i := 0; i < 3; i++ {
 		res = append(res, redis.GeoLocation{
 			Name: "Driver #" + strconv.Itoa(i),
@@ -70,10 +73,12 @@ func publish_ride_request_loop(geo_key string, user_id string, req_chan *chan in
 
 			case <-(timeout_chan):
 				log.Println("Msg for dirver id: " + pos.Name)
-				if i < len(res) -1 {
+				if i < len(res)-1 {
 					go timeout_routine()
 				}
-				GlobalRedisClient.Publish(RedisContext, geo_key, "Msg for dirver id: "+pos.Name)
+				rideInfo.Driver_id = pos.Name
+				b,_ := json.Marshal(rideInfo)
+				GlobalRedisClient.Publish(RedisContext, geo_key, string(b))
 			}
 		}
 		log.Println("Request loop stopping #2")
@@ -119,9 +124,20 @@ func ClientCheckMiddleware(c *fiber.Ctx) error {
 }
 
 func ClientRideRequest(c *fiber.Ctx) error {
-	lon := c.QueryFloat("lon")
-	lat := c.QueryFloat("lat")
-	user_id := c.Query("user_id")
+	rideInfo := &ws.RideReqInfo{
+		SLon: c.QueryFloat("slon"),
+		SLat: c.QueryFloat("slat"),
+		SAdr: c.Query("sadr"),
+
+		ELon: c.QueryFloat("elon"),
+		ELat: c.QueryFloat("elat"),
+		EAdr: c.Query("eadr"),
+		
+		User_id: c.Query("user_id"),
+		Trip_id: c.Locals("trip_id").(string),
+	}
+
+
 	geo_hash := c.Params("geo_hash")
 	room, ok_room := c.Locals("room").(*ws.CommunicationRoom)
 
@@ -135,7 +151,14 @@ func ClientRideRequest(c *fiber.Ctx) error {
 		return c.SendStatus(500)
 	}
 
+	room.RideInfo = rideInfo
+
+	lon := rideInfo.SLon
+	lat := rideInfo.SLat
+	user_id := rideInfo.User_id
 	geo_key := geo_hash[0:4]
+
+	log.Println(lon, lat, user_id, geo_key)
 
 	res, err := GlobalRedisClient.GeoRadius(RedisContext, geo_key, lon, lat, &redis.GeoRadiusQuery{
 		Radius: 1,
@@ -152,6 +175,6 @@ func ClientRideRequest(c *fiber.Ctx) error {
 		c.SendString("Server can't find any driver")
 		return c.SendStatus(500)
 	}
-	go publish_ride_request_loop(geo_key, user_id, &room.Ride_requst_channel, res)
+	go publish_ride_request_loop(geo_key, rideInfo, &room.Ride_requst_channel, res)
 	return c.Next()
 }

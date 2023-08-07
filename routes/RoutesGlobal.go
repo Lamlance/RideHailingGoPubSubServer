@@ -2,6 +2,7 @@ package routes
 
 import (
 	"context"
+	"goserver/libs"
 	"log"
 	"time"
 
@@ -27,6 +28,7 @@ func RedisSubscribe(topics []string) {
 			break
 		} else {
 			log.Println("Message: '" + msg.Payload + "' from channel: " + msg.Channel)
+			libs.Publish(msg.Channel,msg.Payload)
 		}
 	}
 }
