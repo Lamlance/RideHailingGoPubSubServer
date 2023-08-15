@@ -8,12 +8,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
 )
-
 type DriverLocationPostBody struct {
 	Lon float64 `json:"lon"`
 	Lat float64 `json:"lat"`
 	G   string  `json:"g"`
 }
+
 
 func DriverLocationPost(c *fiber.Ctx) error {
 
@@ -41,15 +41,11 @@ func DriverLocationPost(c *fiber.Ctx) error {
 
 	geo_key := body.G[0:4]
 
-	_, err := routes.GlobalRedisClient.GeoAdd(routes.RedisContext, geo_key , &redis.GeoLocation{
-		Longitude: body.Lon,
-		Latitude:  body.Lat,
-		Name:      driver_id,
-	}).Result()
-
-	if err != nil {
-		log.Println("Geo add error: ", err)
-		return c.SendStatus(500)
+	routes.GlobalDriverLocAddChannel <- &routes.DriverLocToAdd{
+		Lon: body.Lon,
+		Lat: body.Lat,
+		GeoKey: geo_key,
+		Driver_id: driver_id,
 	}
 
 	return c.SendStatus(202)
@@ -64,7 +60,8 @@ func DriverLocationGet(c *fiber.Ctx) error {
 	
 	geo_key := geo_hash[0:4]
 
-	res, err := routes.GlobalRedisClient.GeoSearchLocation(routes.RedisContext,geo_key,
+	routes.GlobalRedis.Mutex.Lock()
+	res, err := routes.GlobalRedis.Client.GeoSearchLocation(routes.GlobalRedis.Context,geo_key,
 		&redis.GeoSearchLocationQuery{
 			GeoSearchQuery: redis.GeoSearchQuery{
 				Count: 1,
@@ -72,6 +69,7 @@ func DriverLocationGet(c *fiber.Ctx) error {
 			},
 			WithCoord: true,
 		}).Result()
+	routes.GlobalRedis.Mutex.Unlock()
 
 	if err != nil {
 		log.Println("Get geo error: ", err)
@@ -104,7 +102,9 @@ func DriverLocationDelete(c *fiber.Ctx) error {
 
 	geo_key := geo_hash[0:4]
 
-	res,err := routes.GlobalRedisClient.ZRem(routes.RedisContext, geo_key, driver_id).Result()
+	routes.GlobalRedis.Mutex.Lock()
+	res,err := routes.GlobalRedis.Client.ZRem(routes.GlobalRedis.Context, geo_key, driver_id).Result()
+	routes.GlobalRedis.Mutex.Unlock()
 
 	if err != nil{
 		c.SendStatus(500)

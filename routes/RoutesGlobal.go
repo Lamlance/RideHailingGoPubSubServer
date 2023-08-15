@@ -2,24 +2,39 @@ package routes
 
 import (
 	"context"
+	"encoding/json"
 	"goserver/libs"
+	"goserver/routes/ws"
 	"log"
-	"time"
+	"sync"
 
 	"github.com/redis/go-redis/v9"
 )
 
-var GlobalRedisClient = redis.NewClient(&redis.Options{
-	Addr:     "localhost:6785",
-	Password: "", // no password set
-	DB:       0,  // use default DB
-})
-var RedisContext = context.Background()
+var GlobalRedis struct {
+	Client  *redis.Client
+	Context context.Context
+	Mutex   *sync.Mutex
+} = struct {
+	Client  *redis.Client
+	Context context.Context
+	Mutex   *sync.Mutex
+}{
+	Client: redis.NewClient(&redis.Options{
+		Addr:     "localhost:6785",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	}),
+	Context: context.Background(),
+	Mutex:   new(sync.Mutex),
+}
 
 func RedisSubscribe(topics []string) {
 
-	sub := GlobalRedisClient.Subscribe(RedisContext, topics...)
+	GlobalRedis.Mutex.Lock()
+	sub := GlobalRedis.Client.Subscribe(GlobalRedis.Context, topics...)
 	defer sub.Close()
+	GlobalRedis.Mutex.Unlock()
 
 	for {
 		msg, ok := <-sub.Channel()
@@ -27,59 +42,70 @@ func RedisSubscribe(topics []string) {
 			log.Println("Error reading redis subscribe")
 			break
 		} else {
-			log.Println("Message: '" + msg.Payload + "' from channel: " + msg.Channel)
-			libs.Publish(msg.Channel,msg.Payload)
+			//log.Println("Message: '" + msg.Payload + "' from channel: " + msg.Channel)
+			libs.Publish(msg.Channel, msg.Payload)
 		}
 	}
 }
 
-func FindNearestDriver(lon float64, lat float64, geo_key string) ([]redis.GeoLocation, error) {
-	res, err := GlobalRedisClient.GeoRadius(RedisContext, geo_key, lon, lat, &redis.GeoRadiusQuery{
-		Radius: 1,
-		Unit:   "km",
-		Count:  10,
-		Sort:   "ASC",
-	}).Result()
-	return res, err
+type RideReqToPub struct {
+	ws.RideReqInfo
+	Channel string
 }
 
-func ride_req_loop(drivers []redis.GeoLocation) {
-	skip_chan := make(chan bool)
-	accept_chan := make(chan bool)
+var GlobalRideReqToPubChannel = make(chan *RideReqToPub, 50)
 
-	var timer *time.Timer
+func RedisPublishRideReqListener() {
+	client := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6785",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+	context := context.Background()
 
-	timeout_routine := func() {
-		if timer == nil {
-			timer = time.NewTimer(20 * time.Second)
-		} else {
-			timer.Reset(20 * time.Second)
+	for {
+		data, ok := <-GlobalRideReqToPubChannel
+		if !ok {
+			break
 		}
-		<-timer.C
-		skip_chan <- true
+		go func(req *RideReqToPub) {
+			b, _ := json.Marshal(data)
+			client.Publish(context, req.Channel, b)
+		}(data)
+
 	}
+}
 
-	go func() {
-		driver_ok := false
+type DriverLocToAdd struct {
+	Lon float64
+	Lat float64
+	GeoKey string
+	Driver_id string
+}
 
-		for _, d := range drivers {
-			if driver_ok {
-				break
-			}
+var GlobalDriverLocAddChannel = make(chan *DriverLocToAdd, 50)
 
-			select {
-			case <-accept_chan:
-				log.Println("A driver had accepted ride")
-				if !timer.Stop() {
-					<-timer.C
-				}
-			case <-skip_chan:
-				log.Println("Publish message for driver: ", d.Name)
-				if !timer.Stop() {
-					<-timer.C
-				}
-				go timeout_routine()
-			}
+func RedisAddDriverLocListener() {
+	client := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6785",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+	context := context.Background()
+
+	for{
+		data,ok := <- GlobalDriverLocAddChannel
+		if !ok {
+			break
 		}
-	}()
+
+		go func (data *DriverLocToAdd)  {
+			client.GeoAdd(context,data.GeoKey,&redis.GeoLocation{
+				Name: data.Driver_id,
+				Longitude: data.Lon,
+				Latitude: data.Lat,
+			})
+		}(data)
+
+	}
 }

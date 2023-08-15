@@ -4,6 +4,7 @@ import (
 	"goserver/libs"
 	"goserver/routes"
 	"goserver/routes/loc"
+	"goserver/routes/sse"
 	"goserver/routes/ws"
 	"goserver/routes/xhr"
 	"log"
@@ -18,7 +19,7 @@ func main() {
 	app := fiber.New()
 
 	app.Use(cors.New(cors.Config{
-		AllowHeaders:     "Origin,Content-Type,Accept,Content-Length,Accept-Language,Accept-Encoding,Connection,Access-Control-Allow-Origin",
+		AllowHeaders:     "Origin,Cache-Control,Content-Type,Accept,Content-Length,Accept-Language,Accept-Encoding,Connection,Access-Control-Allow-Origin",
 		AllowOrigins:     "*",
 		AllowCredentials: true,
 		AllowMethods:     "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
@@ -31,7 +32,7 @@ func main() {
 		routes.ClientRideRequest,
 		websocket.New(ws.ClientListenThread))
 
-	
+	app.Get("/ws/client/:geo_hash/:trip_id");
 	
 	app.Get("/ws/driver/:trip_id",
 		ws.DriverHandlerMiddleware,
@@ -60,11 +61,18 @@ func main() {
 	app.Get("loc/driver/:driver_id", loc.DriverLocationGet)
 	app.Delete("loc/driver/:driver_id", loc.DriverLocationDelete)
 
+	app.Get("sse/driver_loc",sse.DriverLoc)
+	app.Get("sse/driver_wait/:geo_hash",sse.DriverWaitReq)
+
+
 	libs.NewPubSub("w3gv")
 
 	//go libs.KafkaConsumer()
 	topics := []string{"w3gv"}
 	go routes.RedisSubscribe(topics)
+	go routes.RedisPublishRideReqListener()
+	go routes.RedisAddDriverLocListener()
 
+	
 	log.Fatal(app.Listen(":3080"))
 }

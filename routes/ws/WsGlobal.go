@@ -37,11 +37,15 @@ type GlobalCommunicationMsg struct {
 	Lock *sync.Mutex
 }
 
+
+
 const (
-	DriverFound string = "⚼"
-	NoDriver string = "⚼⚼⚼⚼"
-	DriverCancel string = "⚼⚼⚼"
-	ClientCancel string = "⚼⚼"
+	DriverFound string = "⚼DRF"
+	NoDriver string = "⚼NDR"
+	DriverCancel string = "⚼DCX"
+	ClientCancel string = "⚼CCX"
+	TripId string = "⚼TID"
+	Message string = "⚼MSG"
 )
 
 var GlobalRoomMap = GlobalCommunicationMsg{

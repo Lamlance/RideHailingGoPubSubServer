@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"encoding/json"
 	"goserver/routes/ws"
 	"strconv"
 
@@ -11,8 +10,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
 )
-
-
 
 func publish_ride_request_loop(geo_key string, rideInfo *ws.RideReqInfo, req_chan *chan int, res []redis.GeoLocation) {
 	for i := 0; i < 3; i++ {
@@ -46,6 +43,7 @@ func publish_ride_request_loop(geo_key string, rideInfo *ws.RideReqInfo, req_cha
 	}
 
 	go func() {
+		
 		driver_ok := false
 
 		for i := 0; i < len(res)+1; i++ {
@@ -77,8 +75,11 @@ func publish_ride_request_loop(geo_key string, rideInfo *ws.RideReqInfo, req_cha
 					go timeout_routine()
 				}
 				rideInfo.Driver_id = pos.Name
-				b,_ := json.Marshal(rideInfo)
-				GlobalRedisClient.Publish(RedisContext, geo_key, string(b))
+				GlobalRideReqToPubChannel <- &RideReqToPub{
+					Channel: geo_key,
+					RideReqInfo: *rideInfo,
+				}
+
 			}
 		}
 		log.Println("Request loop stopping #2")
@@ -132,11 +133,10 @@ func ClientRideRequest(c *fiber.Ctx) error {
 		ELon: c.QueryFloat("elon"),
 		ELat: c.QueryFloat("elat"),
 		EAdr: c.Query("eadr"),
-		
+
 		User_id: c.Query("user_id"),
 		Trip_id: c.Locals("trip_id").(string),
 	}
-
 
 	geo_hash := c.Params("geo_hash")
 	room, ok_room := c.Locals("room").(*ws.CommunicationRoom)
@@ -159,13 +159,14 @@ func ClientRideRequest(c *fiber.Ctx) error {
 	geo_key := geo_hash[0:4]
 
 	log.Println(lon, lat, user_id, geo_key)
-
-	res, err := GlobalRedisClient.GeoRadius(RedisContext, geo_key, lon, lat, &redis.GeoRadiusQuery{
+	GlobalRedis.Mutex.Lock()
+	res, err := GlobalRedis.Client.GeoRadius(GlobalRedis.Context, geo_key, lon, lat, &redis.GeoRadiusQuery{
 		Radius: 1,
 		Unit:   "km",
 		Count:  10,
 		Sort:   "ASC",
 	}).Result()
+	GlobalRedis.Mutex.Unlock()
 
 	if err != nil {
 		log.Println("Ride request error: ", err)
