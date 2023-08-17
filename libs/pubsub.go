@@ -3,9 +3,6 @@ package libs
 import (
 	"log"
 	"sync"
-	"time"
-
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
 type KafkaMsg struct {
@@ -56,9 +53,9 @@ func Subscribe(topic string) (<-chan string, func(),bool) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	c := make(chan string, 1)
+	c := make(chan string, 10)
 	p.channels = append(p.channels, c)
-	log.Println("Channel length: ",len(p.channels))
+	log.Println("Channel length: ",topic,len(p.channels))
 
 	return c, func() {
 		p.lock.Lock()
@@ -82,44 +79,4 @@ func Publish(topic string, message string) {
 	for _, c := range ps.channels {
 		c <- message
 	}
-}
-
-func KafkaConsumer() {
-
-	c, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers": "localhost:9092",
-		"group.id":          "DriverConsumer",
-	})
-
-	if err != nil {
-		log.Println("Kafka connect err: ",err)
-		return
-	}
-
-	log.Println("Kafka consumer: ", c)
-
-	err = c.Subscribe("Driver", nil)
-	if err != nil {
-		log.Fatalln(err)
-		return
-	}
-
-	run := true
-	for run {
-		msg, err := c.ReadMessage(10 * time.Minute)
-
-		if err != nil {
-			run = err.(kafka.Error).Code() == kafka.ErrTimedOut
-			if run {
-				log.Println("Kafka read message timeout")
-			} else {
-				log.Println("Kafka read error: ", err)
-			}
-		}
-
-		log.Println("Consumer message: ", string(msg.Value))
-		Publish("Driver", string(msg.Value))
-	}
-
-	log.Println("Closing Consumer")
 }

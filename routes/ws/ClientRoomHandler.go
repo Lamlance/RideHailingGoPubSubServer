@@ -9,13 +9,11 @@ import (
 )
 
 func ClientListenThread(c *websocket.Conn) {
-	defer c.Close()
-
 	_, ok_parseId := c.Locals("trip_id").(string)
 	room, ok_room := c.Locals("room").(*CommunicationRoom)
 
-	if !ok_parseId || !ok_room{
-		log.Println("Locals error",ok_parseId,ok_room)
+	if !ok_parseId || !ok_room {
+		log.Println("Locals error", ok_parseId, ok_room)
 		c.Close()
 		return
 	}
@@ -24,41 +22,84 @@ func ClientListenThread(c *websocket.Conn) {
 	driver_msg := room.driver_msg
 
 	go ClientHandleDriverMsgThread(c, driver_msg)
-
-	for {
-		_, msg, err := c.ReadMessage()
+	running := true
+	for running {
+		_, data, err := c.ReadMessage()
 		if err != nil {
 			log.Println("Client read error: " + err.Error())
 			break
-		} else {
-			log.Println("Get client msg: " + string(msg))
 		}
+		msg := string(data)
+		log.Println("Get client msg: " + msg)
 
+		if msg[0:5] == NoDriver || msg[0:5] == ClientCancel || msg[0:5] == DriverCancel {
+			running = false
+		}
 		client_msg.lock.Lock()
-		client_msg.data = libs.Enque(client_msg.data, string(msg))
+		client_msg.data = libs.Enque(client_msg.data, msg)
 		client_msg.lock.Unlock()
-	}
 
+		switch msg[0:5] {
+		case NoDriver:
+			running = false
+			err = c.WriteMessage(websocket.CloseMessage,
+				websocket.FormatCloseMessage(3000, "No driver found"))
+		case ClientCancel:
+			running = false
+			err = c.WriteMessage(websocket.CloseMessage,
+				websocket.FormatCloseMessage(3001, "Client has canceled trip"))
+		case DriverCancel:
+			running = false
+			err = c.WriteMessage(websocket.CloseMessage,
+				websocket.FormatCloseMessage(3002, "Driver has canceled trip"))
+		}
+	}
+	c.Close()
 }
 
 func ClientHandleDriverMsgThread(c *websocket.Conn, driver_msg *CommunicationMsg) {
-	for {
+	running := true
+	for ; running; time.Sleep(2 * time.Second) {
 		driver_msg.lock.Lock()
-
-		if len(driver_msg.data) != 0 {
-			msg := ""
-			msg, driver_msg.data = libs.Dequeue(driver_msg.data)
-			log.Println("Client get driver msg: ", msg)
-
-			err := c.WriteMessage(websocket.TextMessage, []byte(msg))
-			if err != nil {
-				driver_msg.lock.Unlock()
-				log.Println("Client write error: " + err.Error())
-				break
-			}
+		if len(driver_msg.data) <= 0 {
+			driver_msg.lock.Unlock()
+			continue
 		}
+
+		msg := ""
+		msg, driver_msg.data = libs.Dequeue(driver_msg.data)
+		log.Println("Client get msg: ", msg)
+		var err error
+
+		switch msg[0:5] {
+		case NoDriver:
+			running = false
+			err = c.WriteMessage(websocket.CloseMessage,
+				websocket.FormatCloseMessage(3000, "No driver found"))
+		case ClientCancel:
+			running = false
+			err = c.WriteMessage(websocket.CloseMessage,
+				websocket.FormatCloseMessage(3001, "Client has canceled trip"))
+		case DriverCancel:
+			running = false
+			err = c.WriteMessage(websocket.CloseMessage,
+				websocket.FormatCloseMessage(3002, "Driver has canceled trip"))
+		case Message:
+			err = c.WriteMessage(websocket.TextMessage, []byte(msg))
+		case DriverFound:
+			err = c.WriteMessage(websocket.TextMessage, []byte(msg))
+		default:
+			err = c.WriteMessage(websocket.TextMessage, []byte(Message+msg))
+		}
+
+		if err != nil {
+			driver_msg.lock.Unlock()
+			log.Println("Client write error: " + err.Error())
+			break
+		}
+
 		driver_msg.lock.Unlock()
-		time.Sleep(2 * time.Second)
 
 	}
+	c.Close()
 }

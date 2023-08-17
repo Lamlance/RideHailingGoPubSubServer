@@ -1,6 +1,10 @@
 package ws
 
-import "sync"
+import (
+	"goserver/routes"
+	"sync"
+)
+
 
 type CommunicationMsg struct {
 	data []string
@@ -11,14 +15,27 @@ type CommunicationRoom struct {
 	client_msg *CommunicationMsg
 	driver_msg *CommunicationMsg
 
+	RideInfo *routes.RideReqInfo
+
 	lock               *sync.Mutex 
-	Break_ride_request chan bool
+	Ride_requst_channel chan int
 }
 
 type GlobalCommunicationMsg struct {
 	Data map[string]*CommunicationRoom
 	Lock *sync.Mutex
 }
+
+
+
+const (
+	DriverFound string = "DRF߷"
+	NoDriver string = "NDR߷"
+	DriverCancel string = "DCX߷"
+	ClientCancel string = "CCX߷"
+	TripId string = "TID߷"
+	Message string = "MSG߷"
+)
 
 var GlobalRoomMap = GlobalCommunicationMsg{
 	Lock: new(sync.Mutex),
@@ -35,7 +52,7 @@ func MakeEmptyCommunicationRoom() *CommunicationRoom {
 			data: make([]string, 0),
 			lock: new(sync.Mutex),
 		},
-		Break_ride_request: make(chan bool,0),
+		Ride_requst_channel: make(chan int,0),
 		lock: new(sync.Mutex),
 	}
 	return &comMsg
