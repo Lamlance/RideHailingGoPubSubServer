@@ -32,6 +32,11 @@ func main() {
 		ws.ClientRideRequest,
 		websocket.New(ws.ClientListenThread))
 
+	app.Get("/admin/client/:geo_hash",
+		ws.ClientCheckMiddleware,
+		ws.ClientRideRequest,
+		websocket.New(ws.AdminRoomHandler))
+
 	app.Get("/ws/client/:geo_hash/:trip_id",func(c *fiber.Ctx) error {return c.SendStatus(200)});
 	
 	app.Get("/ws/driver/:trip_id",
