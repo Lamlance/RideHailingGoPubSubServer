@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"goserver/libs"
-	"goserver/routes/ws"
 	"log"
 	"sync"
 
@@ -48,8 +47,21 @@ func RedisSubscribe(topics []string) {
 	}
 }
 
+type RideReqInfo struct {
+	SLon float64 `json:"slon"`
+	SLat float64 `json:"slat"`
+	SAdr string  `json:"sadr"`
+
+	ELon float64 `json:"elon"`
+	ELat float64 `json:"elat"`
+	EAdr string  `json:"eadr"`
+
+	User_id   string `json:"user_id"`
+	Driver_id string `json:"driver_id"`
+	Trip_id   string `json:"trip_id"`
+}
 type RideReqToPub struct {
-	ws.RideReqInfo
+	RideReqInfo
 	Channel string
 }
 
@@ -77,15 +89,22 @@ func RedisPublishRideReqListener() {
 }
 
 type DriverLocToAdd struct {
-	Lon float64
-	Lat float64
-	GeoKey string
+	Lon       float64
+	Lat       float64
+	GeoKey    string
 	Driver_id string
+}
+type DriverLocSSE struct {
+	Lon      float64 `json:"lon"`
+	Lat      float64 `json:"lat"`
+	DriverId string  `json:"driver_id"`
 }
 
 var GlobalDriverLocAddChannel = make(chan *DriverLocToAdd, 50)
 
 func RedisAddDriverLocListener() {
+	libs.NewPubSub("DriverLoc")
+
 	client := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6785",
 		Password: "", // no password set
@@ -93,18 +112,27 @@ func RedisAddDriverLocListener() {
 	})
 	context := context.Background()
 
-	for{
-		data,ok := <- GlobalDriverLocAddChannel
+	for {
+		data, ok := <-GlobalDriverLocAddChannel
 		if !ok {
 			break
 		}
 
-		go func (data *DriverLocToAdd)  {
-			client.GeoAdd(context,data.GeoKey,&redis.GeoLocation{
-				Name: data.Driver_id,
+		go func(data *DriverLocToAdd) {
+			client.GeoAdd(context, data.GeoKey, &redis.GeoLocation{
+				Name:      data.Driver_id,
 				Longitude: data.Lon,
-				Latitude: data.Lat,
+				Latitude:  data.Lat,
 			})
+			b, err := json.Marshal(&DriverLocSSE{
+				Lon:      data.Lon,
+				Lat:      data.Lat,
+				DriverId: data.Driver_id,
+			})
+
+			if err == nil {
+				libs.Publish("DriverLoc",string(b))
+			}
 		}(data)
 
 	}

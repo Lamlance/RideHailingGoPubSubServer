@@ -28,11 +28,11 @@ func main() {
 	app.Get("/",func(c *fiber.Ctx) error {return c.SendString("Hello")})
 
 	app.Get("/ws/client/:geo_hash",
-		routes.ClientCheckMiddleware,
-		routes.ClientRideRequest,
+		ws.ClientCheckMiddleware,
+		ws.ClientRideRequest,
 		websocket.New(ws.ClientListenThread))
 
-	app.Get("/ws/client/:geo_hash/:trip_id");
+	app.Get("/ws/client/:geo_hash/:trip_id",func(c *fiber.Ctx) error {return c.SendStatus(200)});
 	
 	app.Get("/ws/driver/:trip_id",
 		ws.DriverHandlerMiddleware,
@@ -61,7 +61,7 @@ func main() {
 	app.Get("loc/driver/:driver_id", loc.DriverLocationGet)
 	app.Delete("loc/driver/:driver_id", loc.DriverLocationDelete)
 
-	app.Get("sse/driver_loc",sse.DriverLoc)
+	app.Get("sse/driver_loc/:driver_id",sse.DriverLoc)
 	app.Get("sse/driver_wait/:geo_hash",sse.DriverWaitReq)
 
 

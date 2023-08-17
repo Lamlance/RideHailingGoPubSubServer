@@ -40,9 +40,15 @@ async function req_loop_sse() {
     log_textarea.value += `Ride req: ${e.data} \n`;
   }
   ev.onopen = () =>{
+    driver_poll_button.innerHTML = "Cancled"
+    driver_poll_button.onclick = ()=>{
+      ev.close();
+    }
     log_textarea.value += `SSE Opened \n`;
   }
   ev.close = ()=>{
+    driver_poll_button.innerHTML = "Connect";
+    driver_poll_button.onclick = req_loop_sse
     log_textarea.value += `SSE Closed \n`;
   }
   ev.onerror = (e)=>{

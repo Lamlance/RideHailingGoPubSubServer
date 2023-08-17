@@ -70,7 +70,7 @@ func DriverListenThread(c *websocket.Conn) {
 		msg := string(data)
 		log.Println("Get driver msg: " + msg)
 
-		if msg == NoDriver || msg == ClientCancel || msg == DriverCancel {
+		if msg[0:5] == NoDriver || msg[0:5] == ClientCancel || msg[0:5] == DriverCancel {
 			running = false
 		}
 
@@ -96,7 +96,7 @@ func DriverHandleClientMsgThread(c *websocket.Conn, client_msg *CommunicationMsg
 
 		var err error
 
-		switch msg {
+		switch msg[0:5] {
 		case NoDriver:
 			running = false
 		case ClientCancel:
@@ -105,8 +105,12 @@ func DriverHandleClientMsgThread(c *websocket.Conn, client_msg *CommunicationMsg
 		case DriverCancel:
 			err = c.WriteMessage(websocket.CloseMessage,
 				websocket.FormatCloseMessage(3002, "Driver has canceled trip"))
-		default:
+		case Message:
 			err = c.WriteMessage(websocket.TextMessage, []byte(msg))
+		case DriverFound:
+			err = c.WriteMessage(websocket.TextMessage, []byte(msg))
+		default:
+			err = c.WriteMessage(websocket.TextMessage, []byte(Message+msg))
 		}
 
 		if err != nil {

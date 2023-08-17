@@ -1,21 +1,10 @@
 package ws
 
 import (
+	"goserver/routes"
 	"sync"
 )
-type RideReqInfo struct {
-	SLon float64 `json:"slon"`
-	SLat float64 `json:"slat"`
-	SAdr string  `json:"sadr"`
 
-	ELon float64 `json:"elon"`
-	ELat float64 `json:"elat"`
-	EAdr string `json:"eadr"`
-
-	User_id string `json:"user_id"`
-	Driver_id string `json:"driver_id"`
-	Trip_id string `json:"trip_id"`
-}
 
 type CommunicationMsg struct {
 	data []string
@@ -26,7 +15,7 @@ type CommunicationRoom struct {
 	client_msg *CommunicationMsg
 	driver_msg *CommunicationMsg
 
-	RideInfo *RideReqInfo
+	RideInfo *routes.RideReqInfo
 
 	lock               *sync.Mutex 
 	Ride_requst_channel chan int
@@ -40,12 +29,12 @@ type GlobalCommunicationMsg struct {
 
 
 const (
-	DriverFound string = "⚼DRF"
-	NoDriver string = "⚼NDR"
-	DriverCancel string = "⚼DCX"
-	ClientCancel string = "⚼CCX"
-	TripId string = "⚼TID"
-	Message string = "⚼MSG"
+	DriverFound string = "DRF߷"
+	NoDriver string = "NDR߷"
+	DriverCancel string = "DCX߷"
+	ClientCancel string = "CCX߷"
+	TripId string = "TID߷"
+	Message string = "MSG߷"
 )
 
 var GlobalRoomMap = GlobalCommunicationMsg{
