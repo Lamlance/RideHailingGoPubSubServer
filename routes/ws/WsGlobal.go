@@ -32,6 +32,8 @@ const (
 	DriverFound string = "DRF߷"
 	NoDriver string = "NDR߷"
 	DriverCancel string = "DCX߷"
+	DriverArrivePick string = "DAP߷"
+	DriverArriveDrop string = "DAD߷"
 	ClientCancel string = "CCX߷"
 	TripId string = "TID߷"
 	Message string = "MSG߷"

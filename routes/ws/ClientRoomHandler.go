@@ -84,9 +84,7 @@ func ClientHandleDriverMsgThread(c *websocket.Conn, driver_msg *CommunicationMsg
 			running = false
 			err = c.WriteMessage(websocket.CloseMessage,
 				websocket.FormatCloseMessage(3002, "Driver has canceled trip"))
-		case Message:
-			err = c.WriteMessage(websocket.TextMessage, []byte(msg))
-		case DriverFound:
+		case Message,DriverFound,DriverArriveDrop,DriverArrivePick:
 			err = c.WriteMessage(websocket.TextMessage, []byte(msg))
 		default:
 			err = c.WriteMessage(websocket.TextMessage, []byte(Message+msg))

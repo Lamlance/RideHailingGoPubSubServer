@@ -24,44 +24,42 @@ func DriverWaitReq(c *fiber.Ctx) error {
 	c.Set("Cache-Control", "no-cache")
 	c.Set("Connection", "keep-alive")
 
-	ch, close, _ := libs.Subscribe(geo_key)
-	defer close()
-	time.AfterFunc(10*time.Minute, func() {
-		log.Println("Driver wait timeout")
-		close()
-	})
-
 	c.SendStatus(200)
 	c.Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
+
+		ch, close, _ := libs.Subscribe(geo_key)
+		defer close()
+		time.AfterFunc(10*time.Minute, func() {
+			log.Println("Driver wait timeout")
+			close()
+		})
 
 		w.Write([]byte("id: " + strconv.Itoa(0) + "\n"))
 		w.Write([]byte("event: " + "ping" + "\n"))
 		w.Write([]byte("data: \n"))
 		w.Write([]byte("\n"))
-		if w.Flush() != nil {
+		if err:=w.Flush(); err != nil {
 			return
 		}
+
 		for i := 1; ; i++ {
-			select {
-			case msg, ok := <-ch:
-				if !ok {
-					break
-				}
-				w.Write([]byte("id: " + strconv.Itoa(i) + "\n"))
-				w.Write([]byte("event: " + "message" + "\n"))
-				w.Write([]byte("data: " + msg + "\n"))
-				w.Write([]byte("\n"))
-
-				err := w.Flush()
-				if err != nil {
-					log.Println(err)
-					break
-				}
-			default:
-
+			msg, ok := <-ch
+			if !ok {
+				break
 			}
-			time.Sleep(2 * time.Second)
+
+			w.Write([]byte("id: " + strconv.Itoa(i) + "\n"))
+			w.Write([]byte("event: " + "message" + "\n"))
+			w.Write([]byte("data: " + msg + "\n"))
+			w.Write([]byte("\n"))
+
+			err := w.Flush()
+			if err != nil {
+				log.Println(err)
+				break
+			}
 		}
+
 	}))
 
 	return nil
