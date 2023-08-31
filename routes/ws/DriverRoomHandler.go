@@ -49,12 +49,9 @@ func DriverListenThread(c *websocket.Conn) {
 
 	go DriverHandleClientMsgThread(c, client_msg)
 
-	driver_info := struct {
-		Driver_id string `json:"driver_id"`
-	}{
-		Driver_id: c.Query("driver_id"),
-	}
-	data, _ := json.Marshal(driver_info)
+	room.RideInfo.Driver_id = c.Query("driver_id")
+
+	data, _ := json.Marshal(room.RideInfo)
 	driver_msg.lock.Lock()
 	driver_msg.data = libs.Enque(driver_msg.data, DriverFound+string(data))
 	driver_msg.lock.Unlock()
@@ -96,20 +93,7 @@ func DriverHandleClientMsgThread(c *websocket.Conn, client_msg *CommunicationMsg
 
 		var err error
 
-		switch msg[0:5] {
-		case NoDriver:
-			running = false
-		case ClientCancel:
-			err = c.WriteMessage(websocket.CloseMessage,
-				websocket.FormatCloseMessage(3001, "Client has canceled trip"))
-		case DriverCancel:
-			err = c.WriteMessage(websocket.CloseMessage,
-				websocket.FormatCloseMessage(3002, "Driver has canceled trip"))
-		case Message, DriverFound, DriverArriveDrop, DriverArrivePick:
-			err = c.WriteMessage(websocket.TextMessage, []byte(msg))
-		default:
-			err = c.WriteMessage(websocket.TextMessage, []byte(Message+msg))
-		}
+		err = RecevideSocketMsgHandler(msg,c);
 
 		if err != nil {
 			client_msg.lock.Unlock()

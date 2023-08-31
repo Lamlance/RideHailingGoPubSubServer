@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"encoding/json"
 	"goserver/libs"
 	"goserver/routes"
 	"strconv"
@@ -50,19 +49,19 @@ func publish_ride_request_loop(geo_key string,
 			if !timer.Stop() {
 				<-timer.C
 			}
-			b, err := json.Marshal(rideInfo)
+			// b, err := json.Marshal(rideInfo)
 			driver_found = true
-			if err != nil {
-				driver_found = false
-				break
-			}
-			room.client_msg.lock.Lock()
-			room.client_msg.data = libs.Enque(room.client_msg.data, DriverFound+string(b))
-			room.client_msg.lock.Unlock()
+			// if err != nil {
+			// 	driver_found = false
+			// 	break
+			// }
+			// // room.client_msg.lock.Lock()
+			// room.client_msg.data = libs.Enque(room.client_msg.data, DriverFound+string(b))
+			// room.client_msg.lock.Unlock()
 
-			room.driver_msg.lock.Lock()
-			room.driver_msg.data = libs.Enque(room.driver_msg.data, DriverFound+string(b))
-			room.driver_msg.lock.Unlock()
+			// room.driver_msg.lock.Lock()
+			// room.driver_msg.data = libs.Enque(room.driver_msg.data, DriverFound+string(b))
+			// room.driver_msg.lock.Unlock()
 
 		case DriverDecline:
 			log.Println("Driver has declined")
