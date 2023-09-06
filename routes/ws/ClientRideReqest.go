@@ -49,19 +49,7 @@ func publish_ride_request_loop(geo_key string,
 			if !timer.Stop() {
 				<-timer.C
 			}
-			// b, err := json.Marshal(rideInfo)
 			driver_found = true
-			// if err != nil {
-			// 	driver_found = false
-			// 	break
-			// }
-			// // room.client_msg.lock.Lock()
-			// room.client_msg.data = libs.Enque(room.client_msg.data, DriverFound+string(b))
-			// room.client_msg.lock.Unlock()
-
-			// room.driver_msg.lock.Lock()
-			// room.driver_msg.data = libs.Enque(room.driver_msg.data, DriverFound+string(b))
-			// room.driver_msg.lock.Unlock()
 
 		case DriverDecline:
 			log.Println("Driver has declined")
@@ -104,20 +92,6 @@ func publish_ride_request_loop(geo_key string,
 func ClientCheckMiddleware(c *fiber.Ctx) error {
 	random_string := "Secrete_trip_id" //uuid.New().String()
 
-	GlobalRoomMap.Lock.Lock()
-
-	room := MakeEmptyCommunicationRoom()
-	GlobalRoomMap.Data[random_string] = room
-
-	c.Locals("trip_id", random_string)
-	c.Locals("room", room)
-
-	GlobalRoomMap.Lock.Unlock()
-
-	return c.Next()
-}
-
-func ClientRideRequest(c *fiber.Ctx) error {
 	rideInfo := &routes.RideReqInfo{
 		SLon: c.QueryFloat("slon"),
 		SLat: c.QueryFloat("slat"),
@@ -128,11 +102,47 @@ func ClientRideRequest(c *fiber.Ctx) error {
 		EAdr: c.Query("eadr"),
 
 		User_id: c.Query("user_id"),
-		Trip_id: c.Locals("trip_id").(string),
+		Trip_id: random_string,
+
+		Price:      c.QueryFloat("price"),
+		User_Name:  c.Query("user_name", ""),
+		User_Phone: c.Query("user_phone", ""),
 	}
 
+	if rideInfo.User_Name == "" || rideInfo.User_Phone == "" {
+		res, err := routes.GetUserDetailInfo(rideInfo.User_id)
+		if err != nil {
+			c.SendStatus(400)
+			return c.SendString("Invalid user id")
+		}
+
+		rideInfo.User_Name = res.Name
+		rideInfo.User_Phone = res.Phone
+	}
+
+
+	GlobalRoomMap.Lock.Lock()
+
+	room := MakeEmptyCommunicationRoom()
+	GlobalRoomMap.Data[random_string] = room
+
+	c.Locals("trip_id", random_string)
+	c.Locals("room", room)
+	c.Locals("ride_info",rideInfo)
+	GlobalRoomMap.Lock.Unlock()
+
+	return c.Next()
+}
+
+func ClientRideRequest(c *fiber.Ctx) error {
+	rideInfo,ok_rideInfo := c.Locals("ride_info").(*routes.RideReqInfo)
 	geo_hash := c.Params("geo_hash")
 	room, ok_room := c.Locals("room").(*CommunicationRoom)
+
+	if !ok_rideInfo{
+		log.Println("Server can't find ride info")
+		return c.SendStatus(500)
+	}
 
 	if len(geo_hash) < 4 {
 		c.SendStatus(400)

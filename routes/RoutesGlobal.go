@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"goserver/libs"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"sync"
 
 	"github.com/redis/go-redis/v9"
@@ -59,6 +61,11 @@ type RideReqInfo struct {
 	User_id   string `json:"user_id"`
 	Driver_id string `json:"driver_id"`
 	Trip_id   string `json:"trip_id"`
+
+	Price float64 `json:"price"`
+
+	User_Name string `json:"user_name"`
+	User_Phone string `json:"user_phone"`
 }
 type RideReqToPub struct {
 	RideReqInfo
@@ -131,9 +138,37 @@ func RedisAddDriverLocListener() {
 			})
 
 			if err == nil {
-				libs.Publish("DriverLoc",string(b))
+				libs.Publish("DriverLoc", string(b))
 			}
 		}(data)
 
 	}
+}
+
+type ClientDetail struct{
+	Phone string `json:"phone"`
+	Name string `json:"name"`
+}
+
+func GetUserDetailInfo(user_id string) ( *ClientDetail,error) {
+	res,err := http.Get("http://localhost:3000/api/users/"+user_id)
+	if err != nil{
+		return nil,err
+	}
+
+	resBody, err := ioutil.ReadAll(res.Body)
+	if err != nil{
+		return nil,err
+	}
+
+	client_detail := &ClientDetail{
+		Phone: "",
+		Name: "",
+	}
+	err = json.Unmarshal(resBody,client_detail)
+	if err != nil{
+		return nil,err
+	}
+
+	return client_detail,nil
 }

@@ -60,6 +60,7 @@ func MakeEmptyCommunicationRoom() *CommunicationRoom {
 	return &comMsg
 }
 
+
 func RecevideSocketMsgHandler(msg string, c *websocket.Conn) error {
 	var err error = nil
 	switch msg[0:5] {
