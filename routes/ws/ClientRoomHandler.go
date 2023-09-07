@@ -9,14 +9,26 @@ import (
 )
 
 func ClientListenThread(c *websocket.Conn) {
-	_, ok_parseId := c.Locals("trip_id").(string)
+	trip_id, ok_parseId := c.Locals("trip_id").(string)
 	room, ok_room := c.Locals("room").(*CommunicationRoom)
 
 	if !ok_parseId || !ok_room {
 		log.Println("Locals error", ok_parseId, ok_room)
-		c.Close()
+		c.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(3000, "Server error"))
 		return
 	}
+
+	c.SetCloseHandler(func(code int, text string) error {
+		log.Println("Finishing trip: ",trip_id)
+		GlobalRoomMap.Lock.Lock()
+		_, ok := GlobalRoomMap.Data[trip_id]
+		if ok {
+			delete(GlobalRoomMap.Data, trip_id)
+		}
+		GlobalRoomMap.Lock.Unlock()
+		return nil
+	})
 
 	client_msg := room.client_msg
 	driver_msg := room.driver_msg
@@ -71,7 +83,7 @@ func ClientHandleDriverMsgThread(c *websocket.Conn, driver_msg *CommunicationMsg
 		log.Println("Client get msg: ", msg)
 		var err error
 
-		err = RecevideSocketMsgHandler(msg,c)
+		err = RecevideSocketMsgHandler(msg, c)
 
 		if err != nil {
 			driver_msg.lock.Unlock()

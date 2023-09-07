@@ -24,7 +24,7 @@ func main() {
 		AllowMethods:     "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
 	}))
 
-	app.Get("/",func(c *fiber.Ctx) error {return c.SendString("Hello")})
+	app.Get("/", func(c *fiber.Ctx) error { return c.SendString("Hello") })
 
 	app.Get("/ws/client/:geo_hash",
 		ws.ClientCheckMiddleware,
@@ -36,8 +36,6 @@ func main() {
 		ws.ClientRideRequest,
 		websocket.New(ws.AdminRoomHandler))
 
-	app.Get("/ws/client/:geo_hash/:trip_id",func(c *fiber.Ctx) error {return c.SendStatus(200)});
-	
 	app.Get("/ws/driver/:trip_id",
 		ws.DriverHandlerMiddleware,
 		websocket.New(ws.DriverListenThread))
@@ -65,18 +63,16 @@ func main() {
 	app.Get("loc/driver/:driver_id", loc.DriverLocationGet)
 	app.Delete("loc/driver/:driver_id", loc.DriverLocationDelete)
 
-	app.Get("sse/driver_loc/:driver_id",sse.DriverLoc)
-	app.Get("sse/driver_wait/:geo_hash",sse.DriverWaitReq)
-
+	app.Get("sse/driver_loc/:driver_id", sse.DriverLoc)
+	app.Get("sse/driver_wait/:geo_hash", sse.DriverWaitReq)
 
 	libs.NewPubSub("w3gv")
-
+	
 	//go libs.KafkaConsumer()
 	topics := []string{"w3gv"}
 	go routes.RedisSubscribe(topics)
 	go routes.RedisPublishRideReqListener()
 	go routes.RedisAddDriverLocListener()
 
-	
 	log.Fatal(app.Listen(":3080"))
 }

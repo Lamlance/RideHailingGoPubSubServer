@@ -48,6 +48,7 @@ func DriverLocationPost(c *fiber.Ctx) error {
 		Driver_id: driver_id,
 	}
 
+
 	return c.SendStatus(202)
 }
 

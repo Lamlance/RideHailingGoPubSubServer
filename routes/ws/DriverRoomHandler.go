@@ -33,12 +33,25 @@ func DriverHandlerMiddleware(c *fiber.Ctx) error {
 
 func DriverListenThread(c *websocket.Conn) {
 	room, ok_room := c.Locals("room").(*CommunicationRoom)
+	trip_id := c.Params("trip_id")
 
 	if !ok_room {
 		log.Println("Driver cant find com channel")
-		c.Close()
+		c.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(3000, "Server error"))
 		return
 	}
+
+	c.SetCloseHandler(func(code int, text string) error {
+		log.Println("Finishing trip: ", trip_id)
+		GlobalRoomMap.Lock.Lock()
+		_, ok := GlobalRoomMap.Data[trip_id]
+		if ok && code >= 3000 {
+			delete(GlobalRoomMap.Data, trip_id)
+		}
+		GlobalRoomMap.Lock.Unlock()
+		return nil
+	})
 
 	log.Printf("Driver is stopping ride req loop")
 	room.Ride_requst_channel <- 0
@@ -93,7 +106,7 @@ func DriverHandleClientMsgThread(c *websocket.Conn, client_msg *CommunicationMsg
 
 		var err error
 
-		err = RecevideSocketMsgHandler(msg,c);
+		err = RecevideSocketMsgHandler(msg, c)
 
 		if err != nil {
 			client_msg.lock.Unlock()
