@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -90,7 +91,7 @@ func publish_ride_request_loop(geo_key string,
 }
 
 func ClientCheckMiddleware(c *fiber.Ctx) error {
-	random_string := "Secrete_trip_id" //uuid.New().String()
+	random_string :=  uuid.New().String()
 
 	rideInfo := &routes.RideReqInfo{
 		SLon: c.QueryFloat("slon"),
