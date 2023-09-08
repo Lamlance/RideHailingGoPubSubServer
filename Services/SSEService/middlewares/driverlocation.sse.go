@@ -1,8 +1,7 @@
-package sse
+package middlewares
 
 import (
 	"bufio"
-	"goserver/libs"
 	"log"
 	"strconv"
 
@@ -10,7 +9,20 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-func DriverLoc(c *fiber.Ctx) error {
+//	type DriverLocToAdd struct {
+//		Lon       float64
+//		Lat       float64
+//		GeoKey    string
+//		Driver_id string
+//	}
+//
+//	type DriverLocationPostBody struct {
+//		Lon float64 `json:"lon"`
+//		Lat float64 `json:"lat"`
+//		G   string  `json:"g"`
+//	}
+
+func DriverLocationWatch(c *fiber.Ctx) error {
 	driver_id := c.Params("driver_id")
 	if driver_id == "" {
 		return c.SendStatus(400)
@@ -25,9 +37,8 @@ func DriverLoc(c *fiber.Ctx) error {
 	log.Println("A client start watching driver: ", driver_id)
 
 	c.Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
-
 		log.Println("Start subscribe: ", driver_id)
-		ch, close, ok := libs.Subscribe("DriverLoc")
+		ch, close, ok := Subscribe("DriverCoord")
 		if !ok {
 			log.Println("Cant subscribe: ", driver_id)
 			return
@@ -49,7 +60,7 @@ func DriverLoc(c *fiber.Ctx) error {
 			if !ok {
 				return
 			}
-			log.Println("SSE Client get driver loc: ", data)
+			// log.Println("SSE Client get driver loc: ", data)
 			w.Write([]byte("id: " + strconv.Itoa(i) + "\n"))
 			w.Write([]byte("event: message \n"))
 			w.Write([]byte("data: " + data + "\n"))
@@ -61,8 +72,6 @@ func DriverLoc(c *fiber.Ctx) error {
 				break
 			}
 		}
-
-		log.Println("Driver loc watch writer end")
 	}))
 
 	return nil

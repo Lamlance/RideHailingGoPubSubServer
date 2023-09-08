@@ -1,31 +1,10 @@
-package ws
+package middlewares
 
 import (
-	"goserver/routes"
 	"sync"
 
 	"github.com/gofiber/contrib/websocket"
 )
-
-type CommunicationMsg struct {
-	data []string
-	lock *sync.Mutex
-}
-
-type CommunicationRoom struct {
-	client_msg *CommunicationMsg
-	driver_msg *CommunicationMsg
-
-	RideInfo *routes.RideReqInfo
-
-	lock                *sync.Mutex
-	Ride_requst_channel chan int
-}
-
-type GlobalCommunicationMsg struct {
-	Data map[string]*CommunicationRoom
-	Lock *sync.Mutex
-}
 
 const (
 	DriverFound      string = "DRF߷"
@@ -60,7 +39,7 @@ func MakeEmptyCommunicationRoom() *CommunicationRoom {
 	return &comMsg
 }
 
-func RecevideSocketMsgHandler(msg string, c *websocket.Conn) error {
+func GetSocketMsgHandler(msg string, c *websocket.Conn) error {
 	var err error = nil
 	switch msg[0:5] {
 	case NoDriver:
@@ -75,6 +54,25 @@ func RecevideSocketMsgHandler(msg string, c *websocket.Conn) error {
 	case DriverArriveDrop:
 		err = c.WriteMessage(websocket.CloseMessage,
 			websocket.FormatCloseMessage(3003, "Trip has finished"))
+	}
+	return err
+}
+
+func RecevideSocketMsgHandler(msg string, c *websocket.Conn) error {
+	var err error = nil
+	switch msg[0:5] {
+	case NoDriver:
+		err = c.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(3001, NoDriver+"No driver found"))
+	case ClientCancel:
+		err = c.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(3001, ClientCancel+"Client has canceled trip"))
+	case DriverCancel:
+		err = c.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(3002, DriverCancel+"Driver has canceled trip"))
+	case DriverArriveDrop:
+		err = c.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(3003, DriverArriveDrop+"Trip has finished"))
 	case Message, DriverFound, DriverArrivePick, DriverStratTrip:
 		err = c.WriteMessage(websocket.TextMessage, []byte(msg))
 	default:
@@ -82,4 +80,19 @@ func RecevideSocketMsgHandler(msg string, c *websocket.Conn) error {
 	}
 
 	return err
+}
+
+func Enque(queue []string, element string) []string {
+	queue = append(queue, element) // Simply append to enqueue.
+	return queue
+}
+
+func Dequeue(queue []string) (string, []string) {
+	first := queue[0]
+	if len(queue) == 1 {
+		var tmp = []string{}
+		return first, tmp
+	}
+
+	return first, queue[1:]
 }

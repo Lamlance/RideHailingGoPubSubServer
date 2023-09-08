@@ -1,0 +1,6 @@
+go 1.19
+
+use .
+use ./Services/GeoLocationService
+use ./Services/SSEService
+use ./Services/TripService
