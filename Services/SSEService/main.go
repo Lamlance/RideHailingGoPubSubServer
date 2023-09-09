@@ -23,10 +23,10 @@ func main() {
 		AllowMethods:     "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
 	}))
 
-	app.Get("/", func(c *fiber.Ctx) error { return c.SendString("Hello SSE service") })
+	app.Get("/ridehail/sse", func(c *fiber.Ctx) error { return c.SendString("Hello SSE service") })
 
-	app.Get("xhr/driver/:geo_hash", middlewares.DriverListenRideRequest)
-	app.Get("sse/driver_loc/:driver_id", middlewares.DriverLocationWatch)
+	app.Get("/ridehail/sse/xhr/driver/:geo_hash", middlewares.DriverListenRideRequest)
+	app.Get("/ridehail/sse/sse/driver_loc/:driver_id", middlewares.DriverLocationWatch)
 
 	log.Fatal(app.Listen(":3082"))
 }

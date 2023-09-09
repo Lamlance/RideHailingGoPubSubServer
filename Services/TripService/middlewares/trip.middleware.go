@@ -9,7 +9,6 @@ import (
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 )
 
 type RideReqInfo struct {
@@ -91,7 +90,7 @@ func GetUserDetailInfo(user_id string) (*ClientDetail, error) {
 
 func TripMiddleware(c *fiber.Ctx) error {
 
-	random_string := uuid.New().String()
+	// random_string := uuid.New().String()
 
 	rideInfo := &RideReqInfo{
 		SLon: c.QueryFloat("slon"),
@@ -103,7 +102,7 @@ func TripMiddleware(c *fiber.Ctx) error {
 		EAdr: c.Query("eadr"),
 
 		User_id: c.Query("user_id"),
-		Trip_id: random_string,
+		Trip_id: "",
 
 		Price:      c.QueryFloat("price"),
 		User_Name:  c.Query("user_name", ""),
@@ -132,9 +131,9 @@ func TripMiddleware(c *fiber.Ctx) error {
 	GlobalRoomMap.Lock.Lock()
 
 	room := MakeEmptyCommunicationRoom()
-	GlobalRoomMap.Data[random_string] = room
+	GlobalRoomMap.Data[trip_id] = room
 
-	c.Locals("trip_id", random_string)
+	c.Locals("trip_id", trip_id)
 	c.Locals("room", room)
 	c.Locals("ride_info", rideInfo)
 	GlobalRoomMap.Lock.Unlock()

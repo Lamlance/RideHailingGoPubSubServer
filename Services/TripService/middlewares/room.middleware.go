@@ -43,7 +43,7 @@ type ResponDriver struct {
 
 func GetDrivers(lon float64, lat float64, geo_hash string) ([]redis.GeoLocation, error) {
 
-	url := fmt.Sprintf("http://localhost:3083/find/drivers?lon=%f&lat=%f&g=%s", lon, lat, geo_hash)
+	url := fmt.Sprintf("http://localhost:3083/ridehail/geo/find/drivers?lon=%f&lat=%f&g=%s", lon, lat, geo_hash)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err

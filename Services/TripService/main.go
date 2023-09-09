@@ -20,22 +20,26 @@ func main() {
 		AllowMethods:     "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
 	}))
 
-	app.Get("/", func(c *fiber.Ctx) error { return c.SendString("Hello Trip service") })
+	app.Get("/ridehail/trip/", func(c *fiber.Ctx) error { return c.SendString("Hello Trip service") })
 
 	//Client side
-	app.Get("/ws/client/:geo_hash",
+	app.Get("/ridehail/trip/ws/client/:geo_hash",
 		middlewares.TripMiddleware,
 		middlewares.ClientRideRequest,
 		websocket.New(middlewares.ClientListenThread),
 	)
 
 	//Driver side
-	app.Get("/ws/driver/:trip_id",
+	app.Get("/ridehail/trip/ws/driver/:trip_id",
 		middlewares.DriverRideRequest,
 		websocket.New(middlewares.DriverListenThread),
 	)
 
 	//Admin side
+	app.Get("/ridehail/trip/admin/client/:geo_hash",
+		middlewares.TripMiddleware,
+		middlewares.ClientRideRequest,
+		websocket.New(middlewares.AdminRoomHandler))
 
 	log.Fatal(app.Listen(":3081"))
 

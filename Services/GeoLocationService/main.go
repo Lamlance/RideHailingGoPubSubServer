@@ -19,11 +19,11 @@ func main() {
 		AllowMethods:     "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
 	}))
 
-	app.Post("loc/driver/:driver_id", middlewares.DriverLocationPost)
+	app.Post("/ridehail/geo/loc/driver/:driver_id", middlewares.DriverLocationPost)
 	// app.Get("loc/driver/:driver_id")
 	// app.Delete("loc/driver/:driver_id")
 
-	app.Get("find/drivers", middlewares.FindDriver)
+	app.Get("/ridehail/geo/find/drivers", middlewares.FindDriver)
 
 	log.Fatal(app.Listen(":3083"))
 }
