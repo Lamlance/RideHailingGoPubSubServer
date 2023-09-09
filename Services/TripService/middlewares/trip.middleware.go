@@ -1,8 +1,11 @@
 package middlewares
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -27,9 +30,40 @@ type RideReqInfo struct {
 	User_Name  string `json:"user_name"`
 	User_Phone string `json:"user_phone"`
 }
+
 type ClientDetail struct {
 	Phone string `json:"phone"`
 	Name  string `json:"name"`
+}
+
+func CreateTrip(info *RideReqInfo) (string, error) {
+	b, err := json.Marshal(info)
+	if err != nil {
+		return "", err
+	}
+	req, err := http.NewRequest("POST", "http://localhost:3000/api/rides", bytes.NewBuffer(b))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	log.Println("Body", string(body))
+	trip_response := &struct {
+		Id string `json:"id"`
+	}{}
+	err = json.Unmarshal(body, trip_response)
+	if err != nil {
+		return "", err
+	}
+	return trip_response.Id, nil
 }
 
 func GetUserDetailInfo(user_id string) (*ClientDetail, error) {
@@ -56,6 +90,7 @@ func GetUserDetailInfo(user_id string) (*ClientDetail, error) {
 }
 
 func TripMiddleware(c *fiber.Ctx) error {
+
 	random_string := uuid.New().String()
 
 	rideInfo := &RideReqInfo{
@@ -74,6 +109,14 @@ func TripMiddleware(c *fiber.Ctx) error {
 		User_Name:  c.Query("user_name", ""),
 		User_Phone: c.Query("user_phone", ""),
 	}
+	trip_id, err := CreateTrip(rideInfo)
+	if err != nil {
+		log.Println("Trip create error: ", err)
+		return c.SendStatus(500)
+	}
+
+	rideInfo.Trip_id = trip_id
+	log.Println("Created trip: ", trip_id)
 
 	if rideInfo.User_Name == "" || rideInfo.User_Phone == "" {
 		res, err := GetUserDetailInfo(rideInfo.User_id)

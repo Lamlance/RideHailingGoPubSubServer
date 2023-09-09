@@ -14,7 +14,6 @@ const (
 	DriverStratTrip  string = "DST߷"
 	DriverArriveDrop string = "DAD߷"
 	ClientCancel     string = "CCX߷"
-	TripId           string = "TID߷"
 	Message          string = "MSG߷"
 )
 

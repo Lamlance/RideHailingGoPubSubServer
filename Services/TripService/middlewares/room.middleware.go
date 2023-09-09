@@ -1,7 +1,11 @@
 package middlewares
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"strconv"
 	"sync"
 	"time"
@@ -30,8 +34,46 @@ type GlobalCommunicationMsg struct {
 	Lock *sync.Mutex
 }
 
+type ResponDriver struct {
+	Lon       float64 `json:"Lon"`
+	Lat       float64 `json:"Lat"`
+	Dist      float64 `json:"dist"`
+	Driver_id string  `json:"driver_id"`
+}
+
+func GetDrivers(lon float64, lat float64, geo_hash string) ([]redis.GeoLocation, error) {
+
+	url := fmt.Sprintf("http://localhost:3083/find/drivers?lon=%f&lat=%f&g=%s", lon, lat, geo_hash)
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	resBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	log.Println("Body drivers", string(resBody))
+
+	resp_drivers := make([]ResponDriver, 0)
+	err = json.Unmarshal(resBody, &resp_drivers)
+	if err != nil {
+		return nil, err
+	}
+	drivers := make([]redis.GeoLocation, 0)
+	for _, d := range resp_drivers {
+		drivers = append(drivers, redis.GeoLocation{
+			Longitude: d.Lon,
+			Latitude:  d.Lat,
+			Dist:      d.Dist,
+			Name:      d.Driver_id,
+		})
+	}
+	return drivers, nil
+}
+
 func publish_ride_request_loop(room *CommunicationRoom, res []redis.GeoLocation) {
-	for i := 0; i < 5; i++ {
+	for i := 0; len(res) < 5; i++ {
 		res = append(res, redis.GeoLocation{
 			Name: "Driver #" + strconv.Itoa(i),
 		})
@@ -96,7 +138,6 @@ func publish_ride_request_loop(room *CommunicationRoom, res []redis.GeoLocation)
 		room.driver_msg.lock.Unlock()
 
 	}
-
 }
 
 func ClientRideRequest(c *fiber.Ctx) error {
@@ -120,33 +161,15 @@ func ClientRideRequest(c *fiber.Ctx) error {
 	}
 
 	room.RideInfo = rideInfo
+	drivers, err := GetDrivers(rideInfo.SLon, rideInfo.SLat, geo_hash)
+	if err != nil {
+		log.Println("Get drivers errors: ", err)
+		go publish_ride_request_loop(room, make([]redis.GeoLocation, 0))
 
-	go publish_ride_request_loop(room, make([]redis.GeoLocation, 0))
-	
-	// lon := rideInfo.SLon
-	// lat := rideInfo.SLat
-	// user_id := rideInfo.User_id
-	// geo_key := geo_hash[0:4]
-
-	// log.Println(lon, lat, user_id, geo_key)
-	// routes.GlobalRedis.Mutex.Lock()
-	// res, err := routes.GlobalRedis.Client.GeoRadius(routes.GlobalRedis.Context, geo_key, lon, lat, &redis.GeoRadiusQuery{
-	// 	Radius: 1,
-	// 	Unit:   "km",
-	// 	Count:  10,
-	// 	Sort:   "ASC",
-	// }).Result()
-	// routes.GlobalRedis.Mutex.Unlock()
-
-	// if err != nil {
-	// 	log.Println("Ride request error: ", err)
-	// 	return c.SendStatus(500)
-	// }
-	// if len(res) <= 0 {
-	// 	c.SendString("Server can't find any driver")
-	// 	return c.SendStatus(500)
-	// }
-	// go publish_ride_request_loop(geo_key, rideInfo, room, res)
+	} else {
+		log.Println("Find: ", len(drivers), " for trip: ", rideInfo.Trip_id)
+		go publish_ride_request_loop(room, drivers)
+	}
 
 	return c.Next()
 }

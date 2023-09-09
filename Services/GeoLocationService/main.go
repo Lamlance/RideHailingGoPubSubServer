@@ -23,5 +23,7 @@ func main() {
 	// app.Get("loc/driver/:driver_id")
 	// app.Delete("loc/driver/:driver_id")
 
+	app.Get("find/drivers", middlewares.FindDriver)
+
 	log.Fatal(app.Listen(":3083"))
 }

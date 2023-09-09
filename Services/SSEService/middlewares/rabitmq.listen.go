@@ -87,7 +87,7 @@ func ListenDriverLoc() {
 			log.Println("Consume message error")
 			continue
 		} else {
-			log.Println("Get watch coord msg: ", string(data.Body))
+			log.Println("Get watch coord ")
 		}
 		Publish("DriverCoord", string(data.Body))
 	}
@@ -149,7 +149,7 @@ func ListenRideRequest() {
 			log.Println("Consume message error")
 			continue
 		} else {
-			log.Println("Get ride req msg: ", string(data.Body))
+			log.Println("Get ride req ")
 		}
 		Publish("w3gv", string(data.Body))
 	}
