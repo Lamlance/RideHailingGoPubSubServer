@@ -9,14 +9,26 @@ import (
 )
 
 func ClientListenThread(c *websocket.Conn) {
-	_, ok_parseId := c.Locals("trip_id").(string)
+	trip_id, ok_parseId := c.Locals("trip_id").(string)
 	room, ok_room := c.Locals("room").(*CommunicationRoom)
 
 	if !ok_parseId || !ok_room {
 		log.Println("Locals error", ok_parseId, ok_room)
-		c.Close()
+		c.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(3000, "Server error"))
 		return
 	}
+
+	c.SetCloseHandler(func(code int, text string) error {
+		log.Println("Finishing trip: ",trip_id)
+		GlobalRoomMap.Lock.Lock()
+		_, ok := GlobalRoomMap.Data[trip_id]
+		if ok {
+			delete(GlobalRoomMap.Data, trip_id)
+		}
+		GlobalRoomMap.Lock.Unlock()
+		return nil
+	})
 
 	client_msg := room.client_msg
 	driver_msg := room.driver_msg
@@ -71,26 +83,7 @@ func ClientHandleDriverMsgThread(c *websocket.Conn, driver_msg *CommunicationMsg
 		log.Println("Client get msg: ", msg)
 		var err error
 
-		switch msg[0:5] {
-		case NoDriver:
-			running = false
-			err = c.WriteMessage(websocket.CloseMessage,
-				websocket.FormatCloseMessage(3000, "No driver found"))
-		case ClientCancel:
-			running = false
-			err = c.WriteMessage(websocket.CloseMessage,
-				websocket.FormatCloseMessage(3001, "Client has canceled trip"))
-		case DriverCancel:
-			running = false
-			err = c.WriteMessage(websocket.CloseMessage,
-				websocket.FormatCloseMessage(3002, "Driver has canceled trip"))
-		case Message:
-			err = c.WriteMessage(websocket.TextMessage, []byte(msg))
-		case DriverFound:
-			err = c.WriteMessage(websocket.TextMessage, []byte(msg))
-		default:
-			err = c.WriteMessage(websocket.TextMessage, []byte(Message+msg))
-		}
+		err = RecevideSocketMsgHandler(msg, c)
 
 		if err != nil {
 			driver_msg.lock.Unlock()

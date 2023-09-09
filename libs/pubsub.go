@@ -2,6 +2,7 @@ package libs
 
 import (
 	"log"
+	"strconv"
 	"sync"
 )
 
@@ -43,12 +44,12 @@ var GlobalPubSubDict = CreatedPubSubDict{
 
 func Subscribe(topic string) (<-chan string, func(),bool) {
 	GlobalPubSubDict.lock.Lock()
+	defer GlobalPubSubDict.lock.Unlock()
 	p,ok := GlobalPubSubDict.pubsubs[topic]
 	if !ok{
 		log.Println("Cant find topic ",topic, " in pubsub dict")
 		return nil,nil, false
 	}
-	GlobalPubSubDict.lock.Unlock()
 	
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -71,12 +72,16 @@ func Subscribe(topic string) (<-chan string, func(),bool) {
 }
 
 func Publish(topic string, message string) {
+	GlobalPubSubDict.lock.Lock()
+	defer GlobalPubSubDict.lock.Unlock()
+
 	ps, ok := GlobalPubSubDict.pubsubs[topic]
 	if !ok {
 		return
 	}
 
-	for _, c := range ps.channels {
+	for i, c := range ps.channels {
+		log.Println("Pub topic: ",topic,strconv.Itoa(i))
 		c <- message
 	}
 }

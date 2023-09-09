@@ -33,12 +33,25 @@ func DriverHandlerMiddleware(c *fiber.Ctx) error {
 
 func DriverListenThread(c *websocket.Conn) {
 	room, ok_room := c.Locals("room").(*CommunicationRoom)
+	trip_id := c.Params("trip_id")
 
 	if !ok_room {
 		log.Println("Driver cant find com channel")
-		c.Close()
+		c.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(3000, "Server error"))
 		return
 	}
+
+	c.SetCloseHandler(func(code int, text string) error {
+		log.Println("Finishing trip: ", trip_id)
+		GlobalRoomMap.Lock.Lock()
+		_, ok := GlobalRoomMap.Data[trip_id]
+		if ok && code >= 3000 {
+			delete(GlobalRoomMap.Data, trip_id)
+		}
+		GlobalRoomMap.Lock.Unlock()
+		return nil
+	})
 
 	log.Printf("Driver is stopping ride req loop")
 	room.Ride_requst_channel <- 0
@@ -49,12 +62,9 @@ func DriverListenThread(c *websocket.Conn) {
 
 	go DriverHandleClientMsgThread(c, client_msg)
 
-	driver_info := struct {
-		Driver_id string `json:"driver_id"`
-	}{
-		Driver_id: c.Query("driver_id"),
-	}
-	data, _ := json.Marshal(driver_info)
+	room.RideInfo.Driver_id = c.Query("driver_id")
+
+	data, _ := json.Marshal(room.RideInfo)
 	driver_msg.lock.Lock()
 	driver_msg.data = libs.Enque(driver_msg.data, DriverFound+string(data))
 	driver_msg.lock.Unlock()
@@ -96,22 +106,7 @@ func DriverHandleClientMsgThread(c *websocket.Conn, client_msg *CommunicationMsg
 
 		var err error
 
-		switch msg[0:5] {
-		case NoDriver:
-			running = false
-		case ClientCancel:
-			err = c.WriteMessage(websocket.CloseMessage,
-				websocket.FormatCloseMessage(3001, "Client has canceled trip"))
-		case DriverCancel:
-			err = c.WriteMessage(websocket.CloseMessage,
-				websocket.FormatCloseMessage(3002, "Driver has canceled trip"))
-		case Message:
-			err = c.WriteMessage(websocket.TextMessage, []byte(msg))
-		case DriverFound:
-			err = c.WriteMessage(websocket.TextMessage, []byte(msg))
-		default:
-			err = c.WriteMessage(websocket.TextMessage, []byte(Message+msg))
-		}
+		err = RecevideSocketMsgHandler(msg, c)
 
 		if err != nil {
 			client_msg.lock.Unlock()

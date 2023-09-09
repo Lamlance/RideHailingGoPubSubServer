@@ -5,7 +5,6 @@ import (
 	"goserver/libs"
 	"log"
 	"strconv"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/valyala/fasthttp"
@@ -23,14 +22,20 @@ func DriverLoc(c *fiber.Ctx) error {
 	c.Set("Connection", "keep-alive")
 	//c.Set("Transfer-Encoding", "chunked")
 	c.SendStatus(200)
+	log.Println("A client start watching driver: ", driver_id)
+
 	c.Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
 
+		log.Println("Start subscribe: ", driver_id)
 		ch, close, ok := libs.Subscribe("DriverLoc")
 		if !ok {
+			log.Println("Cant subscribe: ", driver_id)
+
 			return
 		}
-		defer close()
+		log.Println("Had subscribe: ", driver_id)
 
+		defer close()
 		w.Write([]byte("id: " + strconv.Itoa(0) + "\n"))
 		w.Write([]byte("event: ping \n"))
 		w.Write([]byte("data: \n"))
@@ -40,12 +45,12 @@ func DriverLoc(c *fiber.Ctx) error {
 			return
 		}
 
-		for i := 1;; i++ {
+		for i := 1; ; i++ {
 			data, ok := <-ch
 			if !ok {
 				return
 			}
-
+			log.Println("SSE Client get driver loc: ", data)
 			w.Write([]byte("id: " + strconv.Itoa(i) + "\n"))
 			w.Write([]byte("event: message \n"))
 			w.Write([]byte("data: " + data + "\n"))
@@ -56,8 +61,9 @@ func DriverLoc(c *fiber.Ctx) error {
 				log.Print("Error while flushing:", err)
 				break
 			}
-			time.Sleep(2 * time.Second)
 		}
+
+		log.Println("Driver loc watch writer end")
 	}))
 
 	return nil
