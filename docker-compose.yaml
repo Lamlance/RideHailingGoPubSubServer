@@ -1,0 +1,25 @@
+services:
+  geo:
+    build:
+      context: Services/GeoLocationService
+      dockerfile: ./Dockerfile
+    ports:
+      - "3383:3083"
+    environment:
+      - RABBITMQ=1111
+  sse:
+    build:
+      context: Services/SSEService
+      dockerfile: ./Dockerfile
+    ports:
+      - "3382:3082"
+    environment:
+      - RABBITMQ=1111
+  trip:
+    build:
+      context: Services/TripService
+      dockerfile: ./Dockerfile
+    ports:
+      - "3381:3081"
+    environment:
+      - RABBITMQ=1111

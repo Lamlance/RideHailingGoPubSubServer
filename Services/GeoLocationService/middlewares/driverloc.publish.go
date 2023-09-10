@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"os"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -23,7 +24,12 @@ func failOnError(err error, msg string) {
 }
 
 func PublishDriverLocation() {
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	port := os.Getenv("RABBITMQ")
+	log.Println("Read rabbit mq port: ", port)
+	if port == "" {
+		port = "5672"
+	}
+	conn, err := amqp.Dial("amqp://guest:guest@localhost:" + port)
 	failOnError(err, "Listen Ride Req error")
 	defer conn.Close()
 
