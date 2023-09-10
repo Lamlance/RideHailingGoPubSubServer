@@ -1,7 +1,9 @@
 package ws
 
 import (
+	"encoding/json"
 	"goserver/libs"
+	"goserver/routes"
 	"log"
 	"time"
 
@@ -46,8 +48,18 @@ func AdminRoomHandler(c *websocket.Conn) {
 			err = c.WriteMessage(websocket.CloseMessage,
 				websocket.FormatCloseMessage(3002, DriverCancel+"Driver has canceled trip"))
 		case DriverFound:
-			err = c.WriteMessage(websocket.CloseMessage, 
-				websocket.FormatCloseMessage(1000,msg))
+			info := &routes.RideReqInfo{}
+			json.Unmarshal([]byte(msg[5:]), info)
+
+			new_info := &struct {
+				Driver_id string `json:"driver_id"`
+			}{
+				Driver_id: info.Driver_id,
+			}
+			new_msg, _ := json.Marshal(new_info)
+
+			err = c.WriteMessage(websocket.CloseMessage,
+				websocket.FormatCloseMessage(3999, DriverFound+string(new_msg)))
 		}
 
 		if err != nil {

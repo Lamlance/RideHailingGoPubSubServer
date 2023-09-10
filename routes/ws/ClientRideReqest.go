@@ -176,10 +176,10 @@ func ClientRideRequest(c *fiber.Ctx) error {
 		log.Println("Ride request error: ", err)
 		return c.SendStatus(500)
 	}
-	if len(res) <= 0 {
-		c.SendString("Server can't find any driver")
-		return c.SendStatus(500)
-	}
+	// if len(res) <= 0 {
+	// 	c.SendString("Server can't find any driver")
+	// 	return c.SendStatus(500)
+	// }
 	go publish_ride_request_loop(geo_key, rideInfo, room, res)
 	return c.Next()
 }

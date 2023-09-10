@@ -127,7 +127,7 @@ async function req_loop_sse() {
   client_button.onclick = Client_Connect;
   driver_button.onclick = DriverConnect;
   driver_poll_button.onclick = ()=>{
-    req_loop_sse()
+    req_loop()
   };
 
 //console.log(driver_button.onclick);
