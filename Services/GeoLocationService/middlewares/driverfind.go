@@ -2,7 +2,9 @@ package middlewares
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
@@ -15,13 +17,31 @@ type ResponDriver struct {
 	Driver_id string  `json:"driver_id"`
 }
 
-var RedisClient = redis.NewClient(&redis.Options{
-	Addr:     "localhost:6785",
-	Password: "", // no password set
-	DB:       0,  // use default DB
-})
+var RedisClient *redis.Client = nil
 
 var ctx = context.Background()
+
+func ConnectToRedis() {
+	port := os.Getenv("REDIS_PORT")
+	host := os.Getenv("REDIS_HOST")
+
+	if port == "" {
+		port = "6785"
+	}
+	if host == "" {
+		host = "localhost"
+	}
+	url := fmt.Sprintf("%s:%s", host, port)
+	log.Println("Redis url: ", url)
+	RedisClient = redis.NewClient(&redis.Options{
+		Addr:     url,
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+	if err := RedisClient.Ping(ctx).Err(); err != nil {
+		log.Fatal(err)
+	}
+}
 
 func FindDriver(c *fiber.Ctx) error {
 	lon := c.QueryFloat("lon")

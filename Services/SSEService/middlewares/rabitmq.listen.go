@@ -1,7 +1,9 @@
 package middlewares
 
 import (
+	"fmt"
 	"log"
+	"os"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -32,7 +34,20 @@ func failOnError(err error, msg string) {
 }
 
 func ListenDriverLoc() {
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	port := os.Getenv("RABBITMQ_PORT")
+	host := os.Getenv("RABBITMQ_HOST")
+
+	if port == "" {
+		port = "5672"
+	}
+	if host == ""{
+		host = "localhost"
+	}
+
+	url :=  fmt.Sprintf("amqp://guest:guest@%s:%s",host,port)
+	log.Println("Read rabbit mq link: ", url)
+
+	conn, err := amqp.Dial(url)
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
@@ -94,7 +109,20 @@ func ListenDriverLoc() {
 }
 
 func ListenRideRequest() {
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	port := os.Getenv("RABBITMQ_PORT")
+	host := os.Getenv("RABBITMQ_HOST")
+
+	if port == "" {
+		port = "5672"
+	}
+	if host == ""{
+		host = "localhost"
+	}
+
+	url :=  fmt.Sprintf("amqp://guest:guest@%s:%s",host,port)
+	log.Println("Read rabbit mq link: ", url)
+
+	conn, err := amqp.Dial(url)
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 

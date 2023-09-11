@@ -3,6 +3,7 @@ package middlewares
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 
@@ -16,21 +17,40 @@ type DriverPubLoc struct {
 }
 
 var DriverLocationToPub = make(chan *DriverPubLoc, 50)
+var RabbitMQCon *amqp.Connection = nil
 
 func failOnError(err error, msg string) {
 	if err != nil {
-		log.Panicf("%s: %s", msg, err)
+		log.Panicf(msg+" ", err)
 	}
 }
 
-func PublishDriverLocation() {
-	port := os.Getenv("RABBITMQ")
-	log.Println("Read rabbit mq port: ", port)
+func ConnectToRabbitMQ() {
+	port := os.Getenv("RABBITMQ_PORT")
+	host := os.Getenv("RABBITMQ_HOST")
+
 	if port == "" {
 		port = "5672"
 	}
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:" + port)
-	failOnError(err, "Listen Ride Req error")
+	if host == "" {
+		host = "localhost"
+	}
+
+	url := fmt.Sprintf("amqp://guest:guest@%s:%s", host, port)
+	log.Println("Read rabbit mq link: ", url)
+
+	conn, err := amqp.Dial(url)
+	if err != nil {
+		failOnError(err, "Connection error")
+	}
+	RabbitMQCon = conn
+}
+
+func PublishDriverLocation() {
+	if RabbitMQCon == nil {
+		log.Panicln("Cant connect to rabbit mq")
+	}
+	conn := RabbitMQCon
 	defer conn.Close()
 
 	ch, err := conn.Channel()
