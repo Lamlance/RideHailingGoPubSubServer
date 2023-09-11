@@ -3,8 +3,8 @@ services:
     image: "rabbitmq:3.9-management-alpine"
     ports:
       - "8002:15672" #UI
-      - "8001:5672" #rabbit
-      - "3692:15692"
+      # - "8001:5672" #rabbit
+      # - "3692:15692"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:15672" ]
       interval: 30s
@@ -12,11 +12,11 @@ services:
       retries: 5
 
   go_redis: #redis port 6379
-    build: 
-      context: Services/Redis
+    build:
+      context: Services/db/Redis
       dockerfile: ./Dockerfile
-    ports:
-      - "8011:6379"
+    # ports:
+    #   - "8011:6379"
 
   geo:
     depends_on:
@@ -25,8 +25,8 @@ services:
     build:
       context: Services/GeoLocationService
       dockerfile: ./Dockerfile
-    ports:
-      - "3383:3083"
+    # ports:
+    #   - "3383:3083"
     environment:
       - RABBITMQ_PORT=5672
       - RABBITMQ_HOST=go_rabbitmq
@@ -34,28 +34,39 @@ services:
       - REDIS_HOST=go_redis
     restart: on-failure
 
-  # sse:
-  #   depends_on:
-  #     - go_rabbitmq
-  #   build:
-  #     context: Services/SSEService
-  #     dockerfile: ./Dockerfile
-  #   ports:
-  #     - "3382:3082"
-  #   environment:
-  #     - RABBITMQ_PORT=5672
-  #     - RABBITMQ_HOST=go_rabbitmq
-  #   restart: on-failure
-  
-  # trip:
-  #   depends_on:
-  #     - go_rabbitmq
-  #   build:
-  #     context: Services/TripService
-  #     dockerfile: ./Dockerfile
-  #   ports:
-  #     - "3381:3081"
-  #   environment:
-  #     - RABBITMQ_PORT=5672
-  #     - RABBITMQ_HOST=go_rabbitmq
-  #   restart: on-failure
+  sse:
+    depends_on:
+      - go_rabbitmq
+    build:
+      context: Services/SSEService
+      dockerfile: ./Dockerfile
+    # ports:
+    #   - "3382:3082"
+    environment:
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_HOST=go_rabbitmq
+    restart: on-failure
+
+  trip:
+    depends_on:
+      - go_rabbitmq
+    build:
+      context: Services/TripService
+      dockerfile: ./Dockerfile
+    # ports:
+    #   - "3381:3081"
+    environment:
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_HOST=go_rabbitmq
+    restart: on-failure
+
+  nginx:
+    image: "nginx:alpine"
+    depends_on:
+      - go_rabbitmq
+      - go_redis
+      - geo
+      - sse
+      - trip
+    ports:
+      - "8080:80"

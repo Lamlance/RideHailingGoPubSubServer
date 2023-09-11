@@ -10,32 +10,42 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-var RideReqToPub = make(chan *RideReqInfo, 50)
+func failOnError(err error, msg string) {
+	if err != nil {
+		log.Panicf("%s: %s", msg, err)
+	}
+}
 
-func PublishRideRequest() {
+var RideReqToPub = make(chan *RideReqInfo, 50)
+var RabbitMQCon *amqp.Connection = nil
+
+func ConnectToRabbitMQ() {
 	port := os.Getenv("RABBITMQ_PORT")
 	host := os.Getenv("RABBITMQ_HOST")
 
 	if port == "" {
 		port = "5672"
 	}
-	if host == ""{
+	if host == "" {
 		host = "localhost"
 	}
 
-	url :=  fmt.Sprintf("amqp://guest:guest@%s:%s",host,port)
+	url := fmt.Sprintf("amqp://guest:guest@%s:%s", host, port)
 	log.Println("Read rabbit mq link: ", url)
 
 	conn, err := amqp.Dial(url)
 	if err != nil {
-		log.Panic("Listen Ride Req error:", err)
+		failOnError(err, "Connection error")
 	}
+	RabbitMQCon = conn
+}
+func PublishRideRequest() {
+	conn := RabbitMQCon
 	defer conn.Close()
 
 	ch, err := conn.Channel()
-	if err != nil {
-		log.Panic("Create channel error:", err)
-	}
+	failOnError(err, "Create channel error:")
+
 	defer ch.Close()
 
 	err = ch.ExchangeDeclare(
@@ -47,9 +57,8 @@ func PublishRideRequest() {
 		false,                   // no-wait
 		nil,                     // arguments
 	)
-	if err != nil {
-		log.Panic("Exchange error:", err)
-	}
+	failOnError(err, "Exchange error:")
+
 	ctx := context.Background()
 
 	for {
@@ -68,7 +77,7 @@ func PublishRideRequest() {
 			"create_ride_req_topic", // exchange
 			"anonymous.info",        // routing key
 			false,                   // mandatory
-			false,                    // immediate
+			false,                   // immediate
 			amqp.Publishing{
 				ContentType: "text/plain",
 				Body:        b,
@@ -80,5 +89,4 @@ func PublishRideRequest() {
 			log.Println("Rabbitmq published trip req")
 		}
 	}
-
 }

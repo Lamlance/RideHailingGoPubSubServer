@@ -11,7 +11,8 @@ import (
 func main() {
 	middlewares.NewPubSub("w3gv")
 	middlewares.NewPubSub("DriverCoord")
-
+	middlewares.ConnectToRabbitMQ()
+	
 	go middlewares.ListenRideRequest()
 	go middlewares.ListenDriverLoc()
 

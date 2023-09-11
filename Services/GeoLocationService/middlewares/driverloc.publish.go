@@ -17,14 +17,13 @@ type DriverPubLoc struct {
 }
 
 var DriverLocationToPub = make(chan *DriverPubLoc, 50)
-var RabbitMQCon *amqp.Connection = nil
 
 func failOnError(err error, msg string) {
 	if err != nil {
 		log.Panicf(msg+" ", err)
 	}
 }
-
+var RabbitMQCon *amqp.Connection = nil
 func ConnectToRabbitMQ() {
 	port := os.Getenv("RABBITMQ_PORT")
 	host := os.Getenv("RABBITMQ_HOST")

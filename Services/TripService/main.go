@@ -10,7 +10,9 @@ import (
 )
 
 func main() {
+	middlewares.ConnectToRabbitMQ()
 	go middlewares.PublishRideRequest()
+	nginx_prefix := "/ridehail/trip"
 
 	app := fiber.New()
 	app.Use(cors.New(cors.Config{
@@ -20,23 +22,23 @@ func main() {
 		AllowMethods:     "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
 	}))
 
-	app.Get("/ridehail/trip/", func(c *fiber.Ctx) error { return c.SendString("Hello Trip service") })
+	app.Get(nginx_prefix, func(c *fiber.Ctx) error { return c.SendString("Hello Trip service") })
 
 	//Client side
-	app.Get("/ridehail/trip/ws/client/:geo_hash",
+	app.Get(nginx_prefix+"/ws/client/:geo_hash",
 		middlewares.TripMiddleware,
 		middlewares.ClientRideRequest,
 		websocket.New(middlewares.ClientListenThread),
 	)
 
 	//Driver side
-	app.Get("/ridehail/trip/ws/driver/:trip_id",
+	app.Get(nginx_prefix+"/ws/driver/:trip_id",
 		middlewares.DriverRideRequest,
 		websocket.New(middlewares.DriverListenThread),
 	)
 
 	//Admin side
-	app.Get("/ridehail/trip/admin/client/:geo_hash",
+	app.Get(nginx_prefix+"/admin/client/:geo_hash",
 		middlewares.TripMiddleware,
 		middlewares.ClientRideRequest,
 		websocket.New(middlewares.AdminRoomHandler))

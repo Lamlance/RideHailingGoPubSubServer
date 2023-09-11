@@ -33,22 +33,35 @@ func failOnError(err error, msg string) {
 	}
 }
 
-func ListenDriverLoc() {
+var RabbitMQCon1 *amqp.Connection = nil
+var RabbitMQCon2 *amqp.Connection = nil
+
+func ConnectToRabbitMQ() {
 	port := os.Getenv("RABBITMQ_PORT")
 	host := os.Getenv("RABBITMQ_HOST")
 
 	if port == "" {
 		port = "5672"
 	}
-	if host == ""{
+	if host == "" {
 		host = "localhost"
 	}
 
-	url :=  fmt.Sprintf("amqp://guest:guest@%s:%s",host,port)
+	url := fmt.Sprintf("amqp://guest:guest@%s:%s", host, port)
 	log.Println("Read rabbit mq link: ", url)
 
-	conn, err := amqp.Dial(url)
-	failOnError(err, "Failed to connect to RabbitMQ")
+	conn1, err := amqp.Dial(url)
+	conn2, err := amqp.Dial(url)
+
+	if err != nil {
+		failOnError(err, "Connection error")
+	}
+	RabbitMQCon1 = conn1
+	RabbitMQCon2 = conn2
+}
+
+func ListenDriverLoc() {
+	conn := RabbitMQCon1
 	defer conn.Close()
 
 	ch, err := conn.Channel()
@@ -109,21 +122,7 @@ func ListenDriverLoc() {
 }
 
 func ListenRideRequest() {
-	port := os.Getenv("RABBITMQ_PORT")
-	host := os.Getenv("RABBITMQ_HOST")
-
-	if port == "" {
-		port = "5672"
-	}
-	if host == ""{
-		host = "localhost"
-	}
-
-	url :=  fmt.Sprintf("amqp://guest:guest@%s:%s",host,port)
-	log.Println("Read rabbit mq link: ", url)
-
-	conn, err := amqp.Dial(url)
-	failOnError(err, "Failed to connect to RabbitMQ")
+	conn := RabbitMQCon2
 	defer conn.Close()
 
 	ch, err := conn.Channel()
