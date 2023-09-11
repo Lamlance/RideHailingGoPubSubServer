@@ -36,6 +36,8 @@ func DriverLocationPost(c *fiber.Ctx) error {
 		return c.SendString("Invalid geo hash")
 	}
 
+	RedisUpdateDriver(body.Lon, body.Lat, body.G, driver_id)
+
 	DriverLocationToPub <- &DriverPubLoc{
 		Lon:       body.Lon,
 		Lat:       body.Lat,
