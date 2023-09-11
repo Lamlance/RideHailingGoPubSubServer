@@ -1,6 +1,6 @@
 services:
   go_rabbitmq:
-    image: "rabbitmq:3.9-management"
+    image: "rabbitmq:3.9-management-alpine"
     ports:
       - "8002:15672" #UI
       - "8001:5672" #rabbit
