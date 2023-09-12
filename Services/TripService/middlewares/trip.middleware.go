@@ -40,7 +40,7 @@ func CreateTrip(info *RideReqInfo) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	req, err := http.NewRequest("POST", "http://localhost:3000/api/rides", bytes.NewBuffer(b))
+	req, err := http.NewRequest("POST", "http://ride_hailing_webapp:8080/api/rides", bytes.NewBuffer(b))
 	if err != nil {
 		return "", err
 	}
@@ -66,7 +66,7 @@ func CreateTrip(info *RideReqInfo) (string, error) {
 }
 
 func GetUserDetailInfo(user_id string) (*ClientDetail, error) {
-	res, err := http.Get("http://localhost:3000/api/users/" + user_id)
+	res, err := http.Get("http://ride_hailing_webapp:8080/api/users/" + user_id)
 	if err != nil {
 		return nil, err
 	}
